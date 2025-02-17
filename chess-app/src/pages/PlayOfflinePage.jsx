@@ -5,29 +5,23 @@ import { Chess } from "chess.js";
 function ChessGame() {
   const [game] = useState(new Chess());
   const [status, setStatus] = useState("Trắng đi trước");
-  const [promotionMove, setPromotionMove] = useState(null); // Lưu nước đi cần phong cấp
-  const [showPromotionOptions, setShowPromotionOptions] = useState(false); // Hiện UI chọn quân
+  const [promotionMove, setPromotionMove] = useState(null);
+  const [showPromotionOptions, setShowPromotionOptions] = useState(false);
 
   const onDrop = (sourceSquare, targetSquare) => {
     const possibleMoves = game.moves({ square: sourceSquare, verbose: true });
+    const move = possibleMoves.find(m => m.to === targetSquare);
+    if (!move) return false;
 
-  const move = possibleMoves.find(m => m.to === targetSquare);
-  if (!move) return false;
+    if (move.promotion) {
+      setPromotionMove({ from: sourceSquare, to: targetSquare });
+      setShowPromotionOptions(true);
+      return false;
+    }
 
-  // Nếu là nước phong cấp
-  if (move.promotion) {
-    setPromotionMove({ from: sourceSquare, to: targetSquare });
-    setShowPromotionOptions(true);
-    return false; // Không cho thực hiện nước đi ngay
-  }
-
-  game.move({
-    from: sourceSquare,
-    to: targetSquare,
-  });
-
-  updateStatus();
-  return true;
+    game.move({ from: sourceSquare, to: targetSquare });
+    updateStatus();
+    return true;
   };
 
   const promotePawn = (piece) => {
@@ -36,10 +30,10 @@ function ChessGame() {
     game.move({
       from: promotionMove.from,
       to: promotionMove.to,
-      promotion: piece, // Nhận giá trị từ UI
+      promotion: piece,
     });
 
-    setShowPromotionOptions(false); // Ẩn UI chọn quân
+    setShowPromotionOptions(false);
     setPromotionMove(null);
     updateStatus();
   };
@@ -57,12 +51,12 @@ function ChessGame() {
   };
 
   const newGame = () => {
-    game.reset(); // Đặt lại bàn cờ
+    game.reset();
     setStatus("Trắng đi trước");
   };
 
   const undoMove = () => {
-    game.undo(); // Hoàn tác nước đi cuối
+    game.undo();
     updateStatus();
   };
 
@@ -71,26 +65,24 @@ function ChessGame() {
       <h1 className="text-xl font-semibold text-gray-700 mb-6">Cờ Vua Online</h1>
       <div className="flex flex-col items-center">
         <Chessboard
-          position={game.fen()} // Trạng thái bàn cờ
-          onPieceDrop={onDrop} // Callback khi quân cờ được di chuyển
+          position={game.fen()}
+          onPieceDrop={onDrop}
           boardWidth={400}
-          customBoardStyle={{
-            pointerEvents: showPromotionOptions ? "none" : "auto", // Chặn thao tác khi chọn phong cấp
-          }} // Kích thước bàn cờ
+          customBoardStyle={{ pointerEvents: showPromotionOptions ? "none" : "auto" }}
         />
         {showPromotionOptions && (
-        <div className="absolute top-1/3 bg-white p-4 rounded-lg shadow-lg flex gap-2">
-          {["q", "r", "b", "n"].map((piece) => (
-            <button
-              key={piece}
-              onClick={() => promotePawn(piece)}
-              className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              {piece === "q" ? "Hậu" : piece === "r" ? "Xe" : piece === "b" ? "Tượng" : "Mã"}
-            </button>
-          ))}
-        </div>
-      )}
+          <div className="absolute top-1/3 bg-white p-4 rounded-lg shadow-lg flex gap-2">
+            {["q", "r", "b", "n"].map((piece) => (
+              <button
+                key={piece}
+                onClick={() => promotePawn(piece)}
+                className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                {piece === "q" ? "Hậu" : piece === "r" ? "Xe" : piece === "b" ? "Tượng" : "Mã"}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="mt-4 flex gap-4">
           <button
             onClick={newGame}
