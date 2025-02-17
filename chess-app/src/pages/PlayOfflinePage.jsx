@@ -67,7 +67,7 @@ function ChessGame() {
         <Chessboard
           position={game.fen()}
           onPieceDrop={onDrop}
-          boardWidth={400}
+          boardWidth={600}
           customBoardStyle={{ pointerEvents: showPromotionOptions ? "none" : "auto" }}
         />
         {showPromotionOptions && (
