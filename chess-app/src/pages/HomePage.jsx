@@ -54,10 +54,10 @@ const HomePage = () => {
 
     {/* Register và Login ở góc phải */}
     <li className="text-right">
-      <Link to="#" className="text-black font-bold text-[18px] no-underline mx-[5px] transition-colors duration-300 hover:text-blue-600">
+      <Link to="/register" className="text-black font-bold text-[18px] no-underline mx-[5px] transition-colors duration-300 hover:text-blue-600">
         Register
       </Link>
-      <Link to="#" className="text-black font-bold text-[18px] no-underline mx-[5px] transition-colors duration-300 hover:text-blue-600">
+      <Link to="/login" className="text-black font-bold text-[18px] no-underline mx-[5px] transition-colors duration-300 hover:text-blue-600">
        | Login
       </Link>
     </li>
