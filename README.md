@@ -1,4 +1,5 @@
 **Software Requirements Specification (SRS)**
+
 **1. Introduction**
 
 Chess has been one of the most popular strategy games for centuries, and with the advancement of artificial intelligence (AI), it has become even more engaging and educational. This document outlines the requirements for an AI-integrated online chess platform, designed to provide players with a seamless and enriching chess experience. The platform will support both player-versus-player (PvP) and player-versus-environment (PvE) modes, where users can challenge AI opponents of varying skill levels. Additionally, it will include an AI-powered training mode that provides real-time suggestions and post-game analysis to help players improve their strategies.
@@ -75,29 +76,46 @@ F6	Ranking System
 
 
 3.2 External interface requirements
+
 -User interface: Friendly design, easy to use
+
 -Multi-platform support: Responsive web on desktop and mobile
+
 -Color mode: Has light and dark mode
+
 -Board display: Clear, intuitive, customizable interface
 
 3.3 System features system
+
 -Automatic Matchmaking: Matches players by Elo
+
 -Game Saving: Allows for reviewing match history
+
 -Error Analysis: Shows mistakes and how to improve
+
 -In-game Chat: Allows players to communicate during matches
+
 -Create Private Rooms: Players can create rooms and invite friends
 
 3.4 Other Non-Functional Requirements
 -Performance: Fast response, no lag
+
 -Security: Encrypt user data, anti-cheat protection
+
 -Scalability: Supports thousands of players at the same time
+
 -Data Backup: User data and match history must be backed up periodically
+
 AI API Integration: Use Stockfish or a custom AI model to analyze matches
 
 **4. Appendix**
 
 -Recommended Technology
+
 -Frontend: React.js or Vue.js
+
 -Backend: Node.js with Express or Django
+
 -Database: PostgreSQL or MongoDB
+
 -AI: Use Stockfish or a custom deep learning model
