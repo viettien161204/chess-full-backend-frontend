@@ -7,6 +7,35 @@ function ChessGame() {
   const [status, setStatus] = useState("Trắng đi trước");
   const [promotionMove, setPromotionMove] = useState(null);
   const [showPromotionOptions, setShowPromotionOptions] = useState(false);
+  const [selectedSquare, setSelectedSquare] = useState(null);
+  const [validMoves, setValidMoves] = useState([]);
+
+  const onSquareClick = (square) => {
+    if (selectedSquare) {
+      // Nếu đã chọn một ô trước đó, thực hiện nước đi
+      const move = { from: selectedSquare, to: square };
+      const possibleMoves = game.moves({ square: selectedSquare, verbose: true });
+      const foundMove = possibleMoves.find(m => m.to === square);
+
+      if (foundMove && foundMove.promotion) {
+        setPromotionMove(move);
+        setShowPromotionOptions(true);
+      } else if (foundMove) {
+        game.move(move);
+        updateStatus();
+      }
+
+      setSelectedSquare(null);
+      setValidMoves([]);
+    } else {
+      // Nếu chưa chọn ô nào, hiển thị các nước đi hợp lệ
+      const moves = game.moves({ square, verbose: true });
+      if (moves.length > 0) {
+        setSelectedSquare(square);
+        setValidMoves(moves.map(m => m.to));
+      }
+    }
+  };
 
   const onDrop = (sourceSquare, targetSquare) => {
     const possibleMoves = game.moves({ square: sourceSquare, verbose: true });
@@ -60,6 +89,17 @@ function ChessGame() {
     updateStatus();
   };
 
+  const customSquareStyles = () => {
+    const styles = {};
+    validMoves.forEach(square => {
+      styles[square] = { backgroundColor: "rgba(0, 255, 0, 0.4)" };
+    });
+    if (selectedSquare) {
+      styles[selectedSquare] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
+    }
+    return styles;
+  };
+
   return (
     <div className="flex flex-col items-center bg-gray-100 min-h-screen p-4">
       <h1 className="text-xl font-semibold text-gray-700 mb-6">Cờ Vua Online</h1>
@@ -67,7 +107,9 @@ function ChessGame() {
         <Chessboard
           position={game.fen()}
           onPieceDrop={onDrop}
+          onSquareClick={onSquareClick}
           boardWidth={600}
+          customSquareStyles={customSquareStyles()}
           customBoardStyle={{ pointerEvents: showPromotionOptions ? "none" : "auto" }}
         />
         {showPromotionOptions && (
