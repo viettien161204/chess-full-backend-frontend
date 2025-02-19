@@ -1,11 +1,13 @@
 **Software Requirements Specification (SRS)**
 **1. Introduction**
+
 Chess has been one of the most popular strategy games for centuries, and with the advancement of artificial intelligence (AI), it has become even more engaging and educational. This document outlines the requirements for an AI-integrated online chess platform, designed to provide players with a seamless and enriching chess experience. The platform will support both player-versus-player (PvP) and player-versus-environment (PvE) modes, where users can challenge AI opponents of varying skill levels. Additionally, it will include an AI-powered training mode that provides real-time suggestions and post-game analysis to help players improve their strategies.
 The primary audience for this platform includes chess enthusiasts of all levels, from beginners who need guided assistance to advanced players looking for challenging AI matches and in-depth game analysis. Developers and system administrators will also find this document useful in understanding the technical specifications required to build and maintain the platform.
 The platform will feature user registration, matchmaking, ranking systems, and an intuitive interface optimized for desktop and mobile devices. AI integration will be based on advanced chess engines like Stockfish, ensuring high-quality gameplay and analysis. Security measures, such as encrypted data storage and anti-cheating mechanisms, will be implemented to create a fair and competitive environment.
 This document provides a structured approach to defining the functional and non-functional requirements of the system, ensuring a clear vision for its development and deployment.
 
 1.1 Purpose
+
 This document describes the software requirements for an AI-enabled chess website. The website will support players to play against each other, practice with AI, and have features to help players improve their skills.
 
 1.2 Intended audience
@@ -47,10 +49,9 @@ The system includes the following main functions:
 - Can integrate Stockfish API or another chess AI
   
 **3. System features and requirements**
+
 3.1 Functional requirements
-ID
-	Feature Name
-	Description
+
 
 F1	User Registration
 	Users can create an account via email or Google/Facebook
@@ -94,6 +95,7 @@ F6	Ranking System
 AI API Integration: Use Stockfish or a custom AI model to analyze matches
 
 **4. Appendix**
+
 -Recommended Technology
 -Frontend: React.js or Vue.js
 -Backend: Node.js with Express or Django
