@@ -136,7 +136,7 @@ const HomePage = () => {
           <h2 className="mb-[10px] text-3xl font-bold text-white drop-shadow-lg">Play With Bot</h2>
           <p className="mb-[15px] text-base text-gray-200 drop-shadow-md">Challenge AI to improve your skills.</p>
           <Link
-            to="/chess"
+            to="/chessbot"
             className="inline-block bg-gradient-to-r from-[#43cea2] to-[#185a9d] hover:from-[#185a9d] hover:to-[#43cea2] text-white py-[8px] px-[25px] no-underline rounded-full shadow-md transition-all duration-300 hover:shadow-xl hover:from-[#4e54c8] hover:to-[#3f86ed] hover:-translate-y-[3px] hover:scale-105"
           >
             Play Now

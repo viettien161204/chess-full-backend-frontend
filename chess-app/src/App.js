@@ -3,10 +3,12 @@ import './App.css';
 import Home from "./pages/HomePage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+
 import Dash from "./pages/DashboardPage";
 
 
 import PlayOffline from "./pages/PlayOfflinePage";
+import PlayWithBot from "./pages/PlayWithBot";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 function App() {
@@ -21,6 +23,8 @@ function App() {
       <Route path="/register" element={<Register />}>
       </Route>
       <Route path="/login" element={<Login />}>
+      </Route>
+      <Route path="/chessbot" element={<PlayWithBot />}>
       </Route>
      
     </Routes>

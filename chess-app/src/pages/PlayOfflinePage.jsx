@@ -101,7 +101,9 @@ function ChessGame() {
   };
 
   return (
+    
     <div className="flex flex-col items-center bg-gray-100 min-h-screen p-4">
+      
       <h1 className="text-xl font-semibold text-gray-700 mb-6">Cờ Vua Online</h1>
       <div className="flex flex-col items-center">
         <Chessboard
