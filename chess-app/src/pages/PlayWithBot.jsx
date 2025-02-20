@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 
@@ -9,86 +9,28 @@ function PlayWithBot() {
   const [showPromotionOptions, setShowPromotionOptions] = useState(false);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
+  const workerRef = useRef(null);
 
-  // Hàm đánh giá bàn cờ (evaluation function)
-  const evaluateBoard = (game) => {
-    const pieceValues = {
-      p: 100, // Tốt
-      n: 320, // Mã
-      b: 330, // Tượng
-      r: 500, // Xe
-      q: 900, // Hậu
-      k: 20000, // Vua
+  // Khởi tạo Web Worker khi component được mount
+  useEffect(() => {
+    workerRef.current = new Worker(new URL("../botWorker.js", import.meta.url));
+    workerRef.current.onmessage = function (event) {
+      const bestMove = event.data;
+      if (bestMove) {
+        game.move(bestMove);
+        updateStatus();
+      }
     };
 
-    let evaluation = 0;
-    const board = game.board();
-    for (let row of board) {
-      for (let piece of row) {
-        if (piece) {
-          const value = pieceValues[piece.type];
-          evaluation += piece.color === "w" ? value : -value;
-        }
-      }
-    }
-    return evaluation;
-  };
-
-  // Thuật toán Minimax với Alpha-Beta Pruning
-  const minimax = (game, depth, alpha, beta, maximizingPlayer) => {
-    if (depth === 0 || game.isGameOver()) {
-      return evaluateBoard(game);
-    }
-
-    const possibleMoves = game.moves({ verbose: true });
-
-    if (maximizingPlayer) {
-      let maxEval = -Infinity;
-      for (let move of possibleMoves) {
-        game.move(move);
-        const evaluation = minimax(game, depth - 1, alpha, beta, false);
-        game.undo();
-        maxEval = Math.max(maxEval, evaluation);
-        alpha = Math.max(alpha, evaluation);
-        if (beta <= alpha) break; // Alpha-Beta Pruning
-      }
-      return maxEval;
-    } else {
-      let minEval = Infinity;
-      for (let move of possibleMoves) {
-        game.move(move);
-        const evaluation = minimax(game, depth - 1, alpha, beta, true);
-        game.undo();
-        minEval = Math.min(minEval, evaluation);
-        beta = Math.min(beta, evaluation);
-        if (beta <= alpha) break; // Alpha-Beta Pruning
-      }
-      return minEval;
-    }
-  };
+    // Dọn dẹp Web Worker khi component unmount
+    return () => {
+      workerRef.current.terminate();
+    };
+  }, [game]);
 
   // Hàm để bot thực hiện nước đi
   const makeBotMove = () => {
-    const possibleMoves = game.moves({ verbose: true });
-    if (possibleMoves.length === 0) return; // Nếu không có nước đi hợp lệ
-
-    let bestMove = null;
-    let bestValue = -Infinity;
-
-    for (let move of possibleMoves) {
-      game.move(move);
-      const boardValue = minimax(game, 3, -Infinity, Infinity, false); // Độ sâu 3
-      game.undo();
-      if (boardValue > bestValue) {
-        bestValue = boardValue;
-        bestMove = move;
-      }
-    }
-
-    if (bestMove) {
-      game.move(bestMove);
-      updateStatus();
-    }
+    workerRef.current.postMessage({ fen: game.fen(), depth: 3 });
   };
 
   // Khi người chơi thực hiện xong nước đi, bot sẽ đi
@@ -96,9 +38,9 @@ function PlayWithBot() {
     if (game.turn() === "b" && !game.isGameOver()) {
       setTimeout(() => {
         makeBotMove();
-      }, 200); // Bot sẽ đợi 0.5 giây trước khi đi
+      }, 500); // Bot sẽ đợi 0.5 giây trước khi đi
     }
-  }, [game.fen()]); // Theo dõi sự thay đổi của FEN để biết khi nào bot cần đi
+  }, [game.fen()]);
 
   // Các hàm còn lại giữ nguyên
   const onSquareClick = (square) => {
