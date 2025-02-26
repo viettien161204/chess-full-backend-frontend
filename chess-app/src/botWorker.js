@@ -1,113 +1,151 @@
 /* eslint-disable no-restricted-globals */
 import { Chess } from "chess.js";
 
-const evaluateBoard = (game) => {
-  const pieceValues = {
-    p: 100, // Tốt
-    n: 320, // Mã
-    b: 330, // Tượng
-    r: 500, // Xe
-    q: 900, // Hậu
-    k: 20000, // Vua
-  };
+// Piece-square tables
+const pawnTable = [
+  [0, 0, 0, 0, 0, 0, 0, 0],
+  [50, 50, 50, 50, 50, 50, 50, 50],
+  [10, 10, 20, 30, 30, 20, 10, 10],
+  [5, 5, 10, 25, 25, 10, 5, 5],
+  [0, 0, 0, 20, 20, 0, 0, 0],
+  [5, -5, -10, 0, 0, -10, -5, 5],
+  [5, 10, 10, -20, -20, 10, 10, 5],
+  [0, 0, 0, 0, 0, 0, 0, 0],
+];
 
+const knightTable = [
+  [-50, -40, -30, -30, -30, -30, -40, -50],
+  [-40, -20, 0, 0, 0, 0, -20, -40],
+  [-30, 0, 10, 15, 15, 10, 0, -30],
+  [-30, 5, 15, 20, 20, 15, 5, -30],
+  [-30, 0, 15, 20, 20, 15, 0, -30],
+  [-30, 5, 10, 15, 15, 10, 5, -30],
+  [-40, -20, 0, 5, 5, 0, -20, -40],
+  [-50, -40, -30, -30, -30, -30, -40, -50],
+];
+
+const bishopTable = [
+  [-20, -10, -10, -10, -10, -10, -10, -20],
+  [-10, 0, 0, 0, 0, 0, 0, -10],
+  [-10, 0, 5, 10, 10, 5, 0, -10],
+  [-10, 5, 5, 10, 10, 5, 5, -10],
+  [-10, 0, 10, 10, 10, 10, 0, -10],
+  [-10, 10, 10, 5, 5, 10, 10, -10],
+  [-10, 5, 0, 0, 0, 0, 5, -10],
+  [-20, -10, -10, -10, -10, -10, -10, -20],
+];
+
+const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+
+// Board evaluation
+const evaluateBoard = (game) => {
   let evaluation = 0;
   const board = game.board();
+
   for (let i = 0; i < 8; i++) {
     for (let j = 0; j < 8; j++) {
       const piece = board[i][j];
       if (piece) {
-        evaluation += piece.color === "w" ? pieceValues[piece.type] : -pieceValues[piece.type];
+        let value = pieceValues[piece.type];
+        if (piece.type === "p")
+          value += piece.color === "w" ? pawnTable[i][j] : pawnTable[7 - i][j];
+        if (piece.type === "n")
+          value += piece.color === "w" ? knightTable[i][j] : knightTable[7 - i][j];
+        if (piece.type === "b")
+          value += piece.color === "w" ? bishopTable[i][j] : bishopTable[7 - i][j];
+        evaluation += piece.color === "w" ? value : -value;
       }
     }
   }
+
+  // Mobility bonus
+  const mobility = game.moves().length;
+  evaluation += game.turn() === "w" ? mobility * 2 : -mobility * 2;
+
+  // King safety
+  if (game.inCheck()) {
+    evaluation += game.turn() === "w" ? -50 : 50;
+  }
+
   return evaluation;
 };
 
-const evaluateMove = (move) => {
-  const pieceValues = {
-    p: 100, // Tốt
-    n: 320, // Mã
-    b: 330, // Tượng
-    r: 500, // Xe
-    q: 900, // Hậu
-    k: 20000, // Vua
-  };
+// Quiescence search for captures
+const quiescence = (game, alpha, beta) => {
+  const standPat = evaluateBoard(game);
+  if (standPat >= beta) return beta;
+  let newAlpha = Math.max(alpha, standPat);
 
-  let value = 0;
-
-  // Nếu nước đi ăn quân, thêm giá trị quân bị ăn
-  if (move.captured) {
-    value += pieceValues[move.captured];
+  const captureMoves = game.moves({ verbose: true }).filter((m) => m.captured);
+  for (const move of captureMoves) {
+    game.move(move);
+    const score = -quiescence(game, -beta, -newAlpha);
+    game.undo();
+    if (score >= beta) return beta;
+    newAlpha = Math.max(newAlpha, score);
   }
-
-  // Nếu nước đi chiếu, thêm giá trị chiếu
-  if (move.san.includes("+")) {
-    value += 50;
-  }
-
-  // Nếu nước đi là phong cấp, thêm giá trị hậu
-  if (move.promotion === "q") {
-    value += 900;
-  }
-
-  return value;
+  return newAlpha;
 };
 
-const minimax = (game, depth, alpha, beta, maximizingPlayer) => {
-  if (depth === 0 || game.isGameOver()) {
-    return evaluateBoard(game);
+// Minimax with alpha-beta pruning
+const minimax = (game, depth, alpha, beta, maximizingPlayer, level) => {
+  if (depth <= 0 || game.isGameOver()) {
+    return quiescence(game, alpha, beta);
   }
 
-  const possibleMoves = game.moves({ verbose: true });
+  const moves = game.moves({ verbose: true });
+  if (moves.length === 0) return evaluateBoard(game);
 
-  // Sắp xếp các nước đi để tối ưu Alpha-Beta Pruning
-  possibleMoves.sort((a, b) => {
-    const valueA = evaluateMove(a);
-    const valueB = evaluateMove(b);
-    return maximizingPlayer ? valueB - valueA : valueA - valueB;
-  });
+  // Move ordering: prioritize captures
+  moves.sort((a, b) =>
+    (b.captured ? pieceValues[b.captured] : 0) - (a.captured ? pieceValues[a.captured] : 0)
+  );
 
   if (maximizingPlayer) {
     let maxEval = -Infinity;
-    for (let move of possibleMoves) {
+    for (const move of moves) {
       game.move(move);
-      const evaluation = minimax(game, depth - 1, alpha, beta, false);
+      const evalValue = minimax(game, depth - 1, alpha, beta, false, level);
       game.undo();
-      maxEval = Math.max(maxEval, evaluation);
-      alpha = Math.max(alpha, evaluation);
-      if (beta <= alpha) break; // Alpha-Beta Pruning
+      maxEval = Math.max(maxEval, evalValue);
+      alpha = Math.max(alpha, evalValue);
+      if (beta <= alpha) break;
     }
-    return maxEval;
+    return maxEval + (level < 3 ? (Math.random() - 0.5) * 100 : 0); // Randomness for lower levels
   } else {
     let minEval = Infinity;
-    for (let move of possibleMoves) {
+    for (const move of moves) {
       game.move(move);
-      const evaluation = minimax(game, depth - 1, alpha, beta, true);
+      const evalValue = minimax(game, depth - 1, alpha, beta, true, level);
       game.undo();
-      minEval = Math.min(minEval, evaluation);
-      beta = Math.min(beta, evaluation);
-      if (beta <= alpha) break; // Alpha-Beta Pruning
+      minEval = Math.min(minEval, evalValue);
+      beta = Math.min(beta, evalValue);
+      if (beta <= alpha) break;
     }
-    return minEval;
+    return minEval - (level < 3 ? (Math.random() - 0.5) * 100 : 0);
   }
 };
 
-// Sử dụng self bình thường
+// Worker message handler
 self.onmessage = function (event) {
-  const { fen, depth } = event.data;
+  const { fen, depth, level } = event.data;
   const game = new Chess(fen);
-  const possibleMoves = game.moves({ verbose: true });
+  const moves = game.moves({ verbose: true });
 
-  let bestMove = null;
+  if (moves.length === 0) {
+    self.postMessage(null);
+    return;
+  }
+
+  let bestMove = moves[0];
   let bestValue = -Infinity;
 
-  for (let move of possibleMoves) {
+  for (const move of moves) {
     game.move(move);
-    const boardValue = minimax(game, depth - 1, -Infinity, Infinity, false);
+    const value = minimax(game, depth - 1, -Infinity, Infinity, false, level);
     game.undo();
-    if (boardValue > bestValue) {
-      bestValue = boardValue;
+    if (value > bestValue) {
+      bestValue = value;
       bestMove = move;
     }
   }

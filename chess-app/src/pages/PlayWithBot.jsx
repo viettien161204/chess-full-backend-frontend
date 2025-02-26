@@ -4,45 +4,47 @@ import { Chess } from "chess.js";
 
 function PlayWithBot() {
   const [game] = useState(new Chess());
-  const [status, setStatus] = useState("Trắng đi trước");
+  const [status, setStatus] = useState("White to move");
   const [promotionMove, setPromotionMove] = useState(null);
   const [showPromotionOptions, setShowPromotionOptions] = useState(false);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
+  const [botLevel, setBotLevel] = useState(3); // Default: Hard
+  const [isBotThinking, setIsBotThinking] = useState(false);
   const workerRef = useRef(null);
 
-  // Khởi tạo Web Worker khi component được mount
+  // Initialize Web Worker
   useEffect(() => {
     workerRef.current = new Worker(new URL("../botWorker.js", import.meta.url));
-    workerRef.current.onmessage = function (event) {
+    workerRef.current.onmessage = (event) => {
       const bestMove = event.data;
       if (bestMove) {
         game.move(bestMove);
         updateStatus();
       }
+      setIsBotThinking(false);
     };
 
-    // Dọn dẹp Web Worker khi component unmount
     return () => {
       workerRef.current.terminate();
     };
   }, [game]);
 
-  // Hàm để bot thực hiện nước đi
+  // Bot move logic
   const makeBotMove = () => {
-    workerRef.current.postMessage({ fen: game.fen(), depth: 3 });
+    setIsBotThinking(true);
+    const depth = botLevel === 1 ? 1 : botLevel === 2 ? 2 : botLevel === 3 ? 3 : 4;
+    workerRef.current.postMessage({ fen: game.fen(), depth, level: botLevel });
   };
 
-  // Khi người chơi thực hiện xong nước đi, bot sẽ đi
+  // Trigger bot move when it's Black's turn
   useEffect(() => {
     if (game.turn() === "b" && !game.isGameOver()) {
-      setTimeout(() => {
-        makeBotMove();
-      }, 500); // Bot sẽ đợi 0.5 giây trước khi đi
+      setTimeout(makeBotMove, 500);
     }
-  }, [game.fen()]);
+  }, [game.fen(), botLevel]);
 
-  // Các hàm còn lại giữ nguyên
+  // Handle square click
   const onSquareClick = (square) => {
     if (selectedSquare) {
       const move = { from: selectedSquare, to: square };
@@ -68,6 +70,7 @@ function PlayWithBot() {
     }
   };
 
+  // Handle piece drop
   const onDrop = (sourceSquare, targetSquare) => {
     const possibleMoves = game.moves({ square: sourceSquare, verbose: true });
     const move = possibleMoves.find((m) => m.to === targetSquare);
@@ -84,6 +87,7 @@ function PlayWithBot() {
     return true;
   };
 
+  // Handle pawn promotion
   const promotePawn = (piece) => {
     if (!promotionMove) return;
 
@@ -98,28 +102,38 @@ function PlayWithBot() {
     updateStatus();
   };
 
+  // Update game status
   const updateStatus = () => {
     if (game.isGameOver()) {
       if (game.isCheckmate()) {
-        setStatus(`Chiếu hết! ${game.turn() === "w" ? "Đen thắng" : "Trắng thắng"}`);
+        setStatus(`Checkmate! ${game.turn() === "w" ? "Black" : "White"} wins`);
       } else if (game.isDraw()) {
-        setStatus("Hòa!");
+        setStatus("Draw!");
       }
     } else {
-      setStatus(`Lượt đi của ${game.turn() === "w" ? "Trắng" : "Đen"}`);
+      setStatus(`${game.turn() === "w" ? "White" : "Black"} to move`);
     }
   };
 
+  // Start new game
   const newGame = () => {
     game.reset();
-    setStatus("Trắng đi trước");
+    setStatus("White to move");
+    setSelectedSquare(null);
+    setValidMoves([]);
+    setShowPromotionOptions(false);
+    setPromotionMove(null);
   };
 
+  // Undo last move
   const undoMove = () => {
     game.undo();
     updateStatus();
+    setSelectedSquare(null);
+    setValidMoves([]);
   };
 
+  // Highlight valid moves
   const customSquareStyles = () => {
     const styles = {};
     validMoves.forEach((square) => {
@@ -133,7 +147,20 @@ function PlayWithBot() {
 
   return (
     <div className="flex flex-col items-center bg-gray-100 min-h-screen p-4">
-      <h1 className="text-xl font-semibold text-gray-700 mb-6">Cờ Vua với Bot</h1>
+      <h1 className="text-xl font-semibold text-gray-700 mb-6">Chess vs Bot</h1>
+      <div className="mb-4 flex gap-2">
+        <label className="text-gray-700">Bot Level:</label>
+        <select
+          value={botLevel}
+          onChange={(e) => setBotLevel(parseInt(e.target.value))}
+          className="p-2 border rounded"
+        >
+          <option value={1}>Easy (Depth 1)</option>
+          <option value={2}>Medium (Depth 2)</option>
+          <option value={3}>Hard (Depth 3)</option>
+          <option value={4}>Expert (Depth 4)</option>
+        </select>
+      </div>
       <div className="flex flex-col items-center">
         <Chessboard
           position={game.fen()}
@@ -151,7 +178,7 @@ function PlayWithBot() {
                 onClick={() => promotePawn(piece)}
                 className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
-                {piece === "q" ? "Hậu" : piece === "r" ? "Xe" : piece === "b" ? "Tượng" : "Mã"}
+                {piece === "q" ? "Queen" : piece === "r" ? "Rook" : piece === "b" ? "Bishop" : "Knight"}
               </button>
             ))}
           </div>
@@ -161,7 +188,7 @@ function PlayWithBot() {
             onClick={newGame}
             className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
           >
-            Game mới
+            New Game
           </button>
           <button
             onClick={undoMove}
@@ -170,7 +197,9 @@ function PlayWithBot() {
             Undo
           </button>
         </div>
-        <div className="mt-4 text-lg text-gray-800">{status}</div>
+        <div className="mt-4 text-lg text-gray-800">
+          {isBotThinking ? "Bot is thinking..." : status}
+        </div>
       </div>
     </div>
   );
