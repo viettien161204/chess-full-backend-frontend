@@ -16,3 +16,10 @@ code {
 @tailwind components;
 @tailwind utilities;
 
+.chessboard-container {
+  position: relative !important;
+  width: 600px !important;
+  margin: 0 auto !important;
+  z-index: 10 !important;
+}
+
