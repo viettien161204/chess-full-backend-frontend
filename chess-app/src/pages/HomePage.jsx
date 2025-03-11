@@ -178,7 +178,7 @@ const HomePage = () => {
               <div className="relative">
                 {/* Avatar (ảnh đại diện mặc định) */}
                 <img
-                  src="https://via.placeholder.com/40?text=👤" // Ảnh đại diện mặc định (một hình tròn với biểu tượng người dùng)
+                  src="https://store.playstation.com/store/api/chihiro/00_09_000/container/IE/en/99/EP4037-SLES51630_00-AVPLAYITCH000002/0/image?_version=00_09_000&platform=chihiro&bg_color=000000&opacity=100&w=720&h=720" // Ảnh đại diện mặc định (một hình tròn với biểu tượng người dùng)
                   alt="User Avatar"
                   className="w-10 h-10 rounded-full cursor-pointer transition-all duration-300 hover:scale-110"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}

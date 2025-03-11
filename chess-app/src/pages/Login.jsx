@@ -1,35 +1,40 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from 'react-router-dom'; // Thêm useNavigate để điều hướng
-import logo from './1.png'; // Đảm bảo file logo nằm trong thư mục src hoặc điều chỉnh đường dẫn
-import axios from 'axios'; // Thêm axios để gọi API
+import { Link, useNavigate } from 'react-router-dom';
+import logo from './1.png';
+import axios from 'axios';
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(""); // Thêm state để hiển thị lỗi
-  const navigate = useNavigate(); // Hook để điều hướng
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://150.95.112.187:8080/api/auth/sign-in', {
+      console.log("Sending request to:", '/api/auth/sign-in');
+      console.log("Request data:", { email, password });
+      const response = await axios.post('/api/auth/sign-in', {
         email,
         password,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-      // Lưu token vào localStorage
+      console.log("Response:", response.data);
       const token = response.data.token;
       localStorage.setItem('token', token);
       setError('');
-      // Điều hướng đến trang home sau khi đăng nhập thành công
       navigate('/');
     } catch (err) {
-      setError(err.response?.data || 'Login failed. Please check your email and password.');
+      console.error("Error:", err.response ? err.response.data : err.message);
+      setError(err.response?.data?.message || 'Login failed. Please check your email and password.');
     }
   };
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-rose-950 to-black bg-cover bg-center">
-      {/* Navbar với màu hồng phấn */}
       <nav className="bg-rose-900/90 shadow-[0_0_15px_rgba(251,113,133,0.5)] py-3 fixed top-0 left-4 right-4 z-20 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md transition-colors duration-500 ease-in-out">
         <ul className="flex justify-between items-center list-none px-4 md:px-6">
           <li>
@@ -54,11 +59,10 @@ const Login = () => {
         </ul>
       </nav>
 
-      {/* Form Login */}
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-md p-8 bg-gradient-to-br from-gray-900/90 to-rose-950/90 shadow-[0_0_25px_rgba(251,113,133,0.6)] rounded-xl backdrop-blur-lg border border-rose-500/60 transform hover:scale-105 transition-all duration-500">
           <h1 className="text-4xl font-extrabold text-center mb-8 text-rose-300 drop-shadow-[0_0_12px_rgba(251,113,133,0.8)] animate-fadeInDrop">Login</h1>
-          {error && <p className="text-red-500 text-center mb-4">{error}</p>} {/* Hiển thị lỗi */}
+          {error && <p className="text-red-500 text-center mb-4">{error}</p>}
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
               <label className="block text-rose-200 text-sm font-bold mb-2 drop-shadow-[0_0_4px_rgba(251,113,133,0.5)]">Email</label>

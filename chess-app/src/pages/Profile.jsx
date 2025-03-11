@@ -89,7 +89,7 @@ const Profile = () => {
   return (
     <div className="relative overflow-x-hidden min-h-screen font-sans bg-gradient-to-b from-gray-900 to-black">
       {/* Navbar */}
-      <nav className="bg-blue-900/90 shadow-[0_0_15px_rgba(59,130,246,0.5)] py-3 fixed top-0 left-4 right-4 z-20 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md transition-colors duration-500 ease-in-out">
+      <nav className="bg-blue-900/90 shadow-[0_0_15px_rgba(59,130,246,0.5)] py-3  top-0 left-4 right-4 z-20 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md transition-colors duration-500 ease-in-out">
         <ul className="flex justify-between items-center list-none px-4 md:px-6">
           <li>
             <Link to="/">
@@ -105,7 +105,7 @@ const Profile = () => {
             <div className="relative">
               {/* Avatar (ảnh đại diện mặc định) */}
               <img
-                src="https://via.placeholder.com/40?text=👤"
+                src="https://store.playstation.com/store/api/chihiro/00_09_000/container/IE/en/99/EP4037-SLES51630_00-AVPLAYITCH000002/0/image?_version=00_09_000&platform=chihiro&bg_color=000000&opacity=100&w=720&h=720"
                 alt="User Avatar"
                 className="w-10 h-10 rounded-full cursor-pointer transition-all duration-300 hover:scale-110"
                 onClick={() => navigate('/profile')} // Điều hướng về profile khi nhấp vào avatar
@@ -125,7 +125,7 @@ const Profile = () => {
             {/* Avatar */}
             <div className="flex justify-center mb-6">
               <img
-                src="https://via.placeholder.com/100?text=👤"
+                src="https://store.playstation.com/store/api/chihiro/00_09_000/container/IE/en/99/EP4037-SLES51630_00-AVPLAYITCH000002/0/image?_version=00_09_000&platform=chihiro&bg_color=000000&opacity=100&w=720&h=720"
                 alt="User Avatar"
                 className="w-24 h-24 rounded-full border-4 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.7)] transition-all duration-300 hover:shadow-[0_0_25px_rgba(59,130,246,1)]"
               />
