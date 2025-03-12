@@ -47,27 +47,8 @@ public class UserService {
         }
         return null;
     }
-//public User updateUser(String id, User updatedUser) {
-//    Optional<User> userOptional = userRepository.findById(id);
-//    if (userOptional.isPresent()) {
-//        User user = userOptional.get();
-//
-//        user.setFirstName(updatedUser.getFirstName());
-//        user.setLastName(updatedUser.getLastName());
-//        user.setBirthDay(updatedUser.getBirthDay());
-//        user.setScore(updatedUser.getScore());
-//
-//        // Kiểm tra nếu có mật khẩu mới thì mã hóa trước khi lưu
-//        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
-//            user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
-//        }
-//
-//        return userRepository.save(user);
-//    }
-//    return null;
-//}
 
-    public void updateUserPassword(User user) {
+    public void updateUser(User user) {
         userRepository.save(user);
     }
 
