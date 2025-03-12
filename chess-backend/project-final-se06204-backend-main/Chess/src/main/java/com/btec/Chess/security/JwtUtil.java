@@ -39,6 +39,19 @@ public class JwtUtil {
             throw new Exception("Invalid JWT token");
         }
     }
+    public static String extractEmail(String token) throws Exception {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(SECRET_KEY)
+                    .parseClaimsJws(token)
+                    .getBody();
+            return claims.getSubject();
+        } catch (ExpiredJwtException e) {
+            throw new Exception("JWT token is expired");
+        } catch (Exception e) {
+            throw new Exception("Invalid JWT token");
+        }
+    }
 
 
 

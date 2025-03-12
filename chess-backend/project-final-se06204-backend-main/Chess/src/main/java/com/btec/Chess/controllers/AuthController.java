@@ -70,4 +70,50 @@ public class AuthController {
         response.put("token", token);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    /**
+     * Change password - Requires JWT token.
+     *
+     * @param token     The JWT token from Authorization header.
+     * @param request   A map containing oldPassword and newPassword.
+     * @return ResponseEntity with success or error message.
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, String> request) {
+
+        try {
+            // Loại bỏ "Bearer " từ token
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            // Giải mã token để lấy email người dùng
+            String email = JwtUtil.extractEmail(token);
+
+            // Kiểm tra xem người dùng có tồn tại không
+            User user = userService.getUserByEmail(email);
+            if (user == null) {
+                return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+            }
+
+            String oldPassword = request.get("oldPassword");
+            String newPassword = request.get("newPassword");
+
+            // Kiểm tra mật khẩu cũ có đúng không
+            if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+                return new ResponseEntity<>("Incorrect old password", HttpStatus.UNAUTHORIZED);
+            }
+
+            // Cập nhật mật khẩu mới
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userService.updateUserPassword(user);
+
+            return new ResponseEntity<>("Password changed successfully", HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
 }
