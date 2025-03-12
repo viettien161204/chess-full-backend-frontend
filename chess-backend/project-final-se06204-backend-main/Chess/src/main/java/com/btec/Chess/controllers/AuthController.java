@@ -71,28 +71,35 @@ public class AuthController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    /**
+     * Change Password: Update the user's password after verifying the old password.
+     *
+     * @param request A map containing email, oldPassword, and newPassword.
+     * @return ResponseEntity with a success or error message.
+     */
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> passwordRequest) {
-        String email = passwordRequest.get("email");
-        String oldPassword = passwordRequest.get("oldPassword");
-        String newPassword = passwordRequest.get("newPassword");
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String oldPassword = request.get("oldPassword");
+        String newPassword = request.get("newPassword");
 
-        // Kiểm tra người dùng có tồn tại không
+        // Find the user by email
         User user = userService.getUserByEmail(email);
         if (user == null) {
             return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
         }
 
-        // Kiểm tra mật khẩu cũ có đúng không
+        // Verify old password
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             return new ResponseEntity<>("Incorrect old password", HttpStatus.UNAUTHORIZED);
         }
 
-        // Mã hóa và cập nhật mật khẩu mới
+        // Hash and update new password
         user.setPassword(passwordEncoder.encode(newPassword));
-        userService.updateUser(user);
+        userService.saveUser(user);
 
         return new ResponseEntity<>("Password updated successfully", HttpStatus.OK);
     }
+
 
 }
