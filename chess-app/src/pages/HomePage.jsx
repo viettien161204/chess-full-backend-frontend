@@ -403,6 +403,7 @@ const HomePage = () => {
             </div>
           </div>
         </section>
+        
 
         {/* Section 5: Footer */}
         <section
@@ -424,7 +425,7 @@ const HomePage = () => {
               </h3>
               <ul className="text-sm md:text-base space-y-4">
                 <li>
-                  <Link to="/" className="flex items-center text-blue-300/80 hover:text-blue-200 transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
+                  <Link to="/puzzlemode" className="flex items-center text-blue-300/80 hover:text-blue-200 transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
                     <span className="mr-3">🏠</span> Home
                   </Link>
                 </li>

@@ -10,6 +10,7 @@ import Profile from "./pages/Profile";
 import PlayOffline from "./pages/PlayOfflinePage";
 import PlayWithBot from "./pages/PlayWithBot";
 import PlayOnline from "./pages/PlayOnlinePage";
+import PuzzleMode from "./pages/PuzzleMode";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 function App() {
@@ -30,6 +31,8 @@ function App() {
       <Route path="/chessbot" element={<PlayWithBot />}>
       </Route>
       <Route path="/chessonline" element={<PlayOnline />}>
+      </Route>
+      <Route path="/puzzlemode" element={<PuzzleMode />}>
       </Route>
      
     </Routes>
