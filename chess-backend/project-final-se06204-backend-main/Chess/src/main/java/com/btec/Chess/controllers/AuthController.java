@@ -71,6 +71,28 @@ public class AuthController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> passwordRequest) {
+        String email = passwordRequest.get("email");
+        String oldPassword = passwordRequest.get("oldPassword");
+        String newPassword = passwordRequest.get("newPassword");
 
+        // Kiểm tra người dùng có tồn tại không
+        User user = userService.getUserByEmail(email);
+        if (user == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+
+        // Kiểm tra mật khẩu cũ có đúng không
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return new ResponseEntity<>("Incorrect old password", HttpStatus.UNAUTHORIZED);
+        }
+
+        // Mã hóa và cập nhật mật khẩu mới
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userService.updateUser(user);
+
+        return new ResponseEntity<>("Password updated successfully", HttpStatus.OK);
+    }
 
 }
