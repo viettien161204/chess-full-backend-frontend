@@ -42,6 +42,5 @@ public class JwtUtil {
 
 
 
-
     // Existing methods for validation and claims extraction
 }
