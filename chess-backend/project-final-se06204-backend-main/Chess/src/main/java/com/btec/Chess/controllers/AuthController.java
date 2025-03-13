@@ -95,4 +95,22 @@ public class AuthController {
         return new ResponseEntity<>("Password updated successfully", HttpStatus.OK);
     }
 
+    /**
+     * Delete User: Remove a user from the system.
+     *
+     * @param email The email of the user to be deleted.
+     * @return ResponseEntity with a success or error message.
+     */
+    @DeleteMapping("/delete-user")
+    public ResponseEntity<?> deleteUser(@RequestParam String email) {
+        // Find the user by email
+        User user = userService.getUserByEmail(email);
+        if (user == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+
+        // Delete the user
+        userService.deleteUser(user.getId());
+        return new ResponseEntity<>("User deleted successfully", HttpStatus.OK);
+    }
 }
