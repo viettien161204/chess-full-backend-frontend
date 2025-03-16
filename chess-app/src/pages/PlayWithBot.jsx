@@ -58,12 +58,15 @@ function PlayWithBot() {
   }, [moveHistory, game]);
 
   useEffect(() => {
-    workerRef.current = new Worker(new URL("../botWorker.js", import.meta.url));
+    workerRef.current = new Worker(new URL("../botWorker.worker.js", import.meta.url));
     workerRef.current.onmessage = (event) => {
       const bestMove = event.data;
       if (bestMove) {
         game.move(bestMove);
         updateStatusAndHistory(bestMove);
+      } else {
+        console.error("Bot failed to return a valid move");
+        setStatus("Bot failed to find a move");
       }
       setIsBotThinking(false);
     };
@@ -72,13 +75,14 @@ function PlayWithBot() {
 
   const makeBotMove = () => {
     setIsBotThinking(true);
-    const depth = botLevel === 1 ? 1 : botLevel === 2 ? 2 : botLevel === 3 ? 3 : 4;
-    workerRef.current.postMessage({ fen: game.fen(), depth, level: botLevel });
+    // Gửi FEN tới worker, không cần gửi depth và level nữa
+    console.log("Sending FEN to worker:", game.fen());
+    workerRef.current.postMessage({ fen: game.fen() });
   };
 
   useEffect(() => {
     if (game.turn() === "b" && !game.isGameOver()) setTimeout(makeBotMove, 500);
-  }, [game.fen(), botLevel]);
+  }, [game.fen()]); // Loại bỏ botLevel khỏi dependency
 
   const onSquareClick = (square) => {
     if (showPromotionOptions) return;
@@ -229,7 +233,8 @@ function PlayWithBot() {
       <div className="flex flex-col items-center min-h-screen p-4">
         <h1 className="text-xl font-semibold text-rose-300 mb-6 drop-shadow-[0_0_10px_rgba(251,113,133,0.7)]">Chess vs Bot</h1>
 
-        <div className="mb-4 flex gap-2">
+        {/* Bỏ chọn bot level vì mô hình ONNX không cần depth */}
+        {/* <div className="mb-4 flex gap-2">
           <label className="text-rose-200">Bot Level:</label>
           <select
             value={botLevel}
@@ -241,7 +246,7 @@ function PlayWithBot() {
             <option value={3}>Hard (Depth 3)</option>
             <option value={4}>Expert (Depth 4)</option>
           </select>
-        </div>
+        </div> */}
 
         <div style={{ width: '600px', height: '600px' }}>
           <Chessboard
