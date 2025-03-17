@@ -7,7 +7,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -54,5 +56,17 @@ public class UserService {
 
     public void deleteUser(String id) {
         userRepository.deleteById(id);
+    }
+    private Map<String, String> resetTokenStorage = new HashMap<>();
+
+    public void updateUserPassword(User user) {
+        userRepository.save(user);
+    }
+    public void saveResetToken(User user, String resetToken) {
+        resetTokenStorage.put(user.getEmail(), resetToken);
+    }
+
+    public String getResetToken(String email) {
+        return resetTokenStorage.get(email);
     }
 }
