@@ -19,7 +19,7 @@ const Profile = () => {
     // Gọi API để lấy danh sách người dùng
     const fetchUserProfile = async () => {
       try {
-        const response = await axios.get('http://150.95.112.187:8080/api/users', {
+        const response = await axios.get('./api/users', {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -11,6 +11,10 @@ import PlayOffline from "./pages/PlayOfflinePage";
 import PlayWithBot from "./pages/PlayWithBot";
 import PlayOnline from "./pages/PlayOnlinePage";
 import PuzzleMode from "./pages/PuzzleMode";
+import DailyMode from "./pages/DailyChallenge";
+import GameMode from "./pages/GameModes";
+import Leaderboard from "./pages/Leaderboard";
+import Tournaments from "./pages/Tournaments";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 function App() {
@@ -18,7 +22,8 @@ function App() {
     <BrowserRouter>
     <Routes>
       <Route path="/" element={<Home />}>
-        <Route index element={<Dash />} />
+      </Route>
+      <Route path="/inDev" element={<Dash />}>
       </Route>
       <Route path="/chess" element={<PlayOffline />}>
       </Route>
@@ -33,6 +38,14 @@ function App() {
       <Route path="/chessonline" element={<PlayOnline />}>
       </Route>
       <Route path="/puzzlemode" element={<PuzzleMode />}>
+      </Route>
+      <Route path="/dailymode" element={<DailyMode />}>
+      </Route>
+      <Route path="/gamemode" element={<GameMode />}>
+      </Route>
+      <Route path="/leaderboard" element={<Leaderboard />}>
+      </Route>
+      <Route path="/tournaments" element={<Tournaments />}>
       </Route>
      
     </Routes>

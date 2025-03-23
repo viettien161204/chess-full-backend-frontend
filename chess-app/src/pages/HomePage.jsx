@@ -11,10 +11,12 @@ const HomePage = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
   const [expandedSection, setExpandedSection] = useState(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // State cho dropdown menu
-  const [showLoginModal, setShowLoginModal] = useState(false); // State cho modal đăng nhập
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // State cho dropdown menu của Home
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false); // State cho dropdown của user
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const sectionsCount = 5;
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -65,21 +67,25 @@ const HomePage = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token'); // Xóa token khi đăng xuất
-    setIsDropdownOpen(false); // Đóng dropdown sau khi đăng xuất
-    window.location.reload(); // Tải lại trang để cập nhật giao diện
+    localStorage.removeItem('token');
+    setIsUserDropdownOpen(false);
+    window.location.reload();
   };
 
-  // Kiểm tra xem người dùng đã đăng nhập chưa (dựa vào token trong localStorage)
   const isLoggedIn = !!localStorage.getItem('token');
 
-  // Hàm xử lý khi nhấp vào "Play Now" trong section "Play Online"
   const handlePlayOnline = () => {
     if (!isLoggedIn) {
-      setShowLoginModal(true); // Hiển thị modal nếu chưa đăng nhập
+      setShowLoginModal(true);
     } else {
-      navigate('/chessonline'); // Điều hướng đến trang Play Online nếu đã đăng nhập
+      navigate('/chessonline');
     }
+  };
+
+  // Hàm xử lý khi chọn tùy chọn trong dropdown Home
+  const handleMenuSelect = (sectionIndex) => {
+    setIsDropdownOpen(false); // Đóng dropdown sau khi chọn
+    goToSection(sectionIndex); // Chuyển đến section tương ứng
   };
 
   const navColors = [
@@ -91,11 +97,11 @@ const HomePage = () => {
   ];
 
   const textColors = [
-    'text-orange-400 hover:text-orange-200 hover:drop-shadow-[0_0_8px_rgba(255,140,0,0.8)]',
-    'text-emerald-400 hover:text-emerald-200 hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]',
-    'text-purple-400 hover:text-purple-200 hover:drop-shadow-[0_0_8px_rgba(147,51,234,0.8)]',
-    'text-rose-400 hover:text-rose-200 hover:drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]',
-    'text-blue-400 hover:text-blue-200 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]',
+    'text-orange-300 hover:text-orange-100 hover:drop-shadow-[0_0_10px_rgba(255,140,0,0.9)]',
+    'text-emerald-300 hover:text-emerald-100 hover:drop-shadow-[0_0_10px_rgba(16,185,129,0.9)]',
+    'text-purple-300 hover:text-purple-100 hover:drop-shadow-[0_0_10px_rgba(147,51,234,0.9)]',
+    'text-rose-300 hover:text-rose-100 hover:drop-shadow-[0_0_10px_rgba(244,63,94,0.9)]',
+    'text-blue-300 hover:text-blue-100 hover:drop-shadow-[0_0_10px_rgba(59,130,246,0.9)]',
   ];
 
   const separatorColors = [
@@ -104,6 +110,14 @@ const HomePage = () => {
     'text-purple-600',
     'text-rose-600',
     'text-blue-600',
+  ];
+
+  const buttonGradients = [
+    'from-orange-600 to-orange-400 shadow-[0_0_12px_rgba(255,140,0,0.7)] hover:from-orange-500 hover:to-orange-300 hover:shadow-[0_0_20px_rgba(255,140,0,0.9)]',
+    'from-emerald-600 to-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.7)] hover:from-emerald-500 hover:to-emerald-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.9)]',
+    'from-purple-600 to-purple-400 shadow-[0_0_12px_rgba(147,51,234,0.7)] hover:from-purple-500 hover:to-purple-300 hover:shadow-[0_0_20px_rgba(147,51,234,0.9)]',
+    'from-rose-600 to-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.7)] hover:from-rose-500 hover:to-rose-300 hover:shadow-[0_0_20px_rgba(244,63,94,0.9)]',
+    'from-blue-600 to-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.7)] hover:from-blue-500 hover:to-blue-300 hover:shadow-[0_0_20px_rgba(59,130,246,0.9)]',
   ];
 
   const sectionDetails = {
@@ -157,8 +171,6 @@ const HomePage = () => {
     ),
   };
 
-  const navigate = useNavigate(); // Thêm useNavigate để điều hướng
-
   return (
     <div className="relative overflow-x-hidden h-screen font-sans bg-black">
       <nav className={`${navColors[currentSection]} py-3 fixed top-0 left-4 right-4 z-20 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md transition-colors duration-500 ease-in-out`}>
@@ -168,30 +180,80 @@ const HomePage = () => {
               <img src={logo} alt="Chess Logo" className="h-12 md:h-16 w-auto transition-transform duration-300 hover:scale-110" style={{ filter: `drop-shadow(0 0 10px ${textColors[currentSection].split('hover:drop-shadow-')[1].slice(11, -1)})` }} />
             </Link>
           </li>
-          <li className="flex-1 text-center">
-            <Link to="/" className={`${textColors[currentSection]} font-semibold text-base md:text-lg transition-all duration-300`}>
-              Home
-            </Link>
+          <li className="flex-1 text-center relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className={`${textColors[currentSection]} font-semibold text-base md:text-lg transition-all duration-300 bg-gradient-to-r ${buttonGradients[currentSection]} py-2 px-6 rounded-full hover:scale-105`}
+            >
+              <span className="drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]">Home</span>
+              <svg className="inline-block w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            {isDropdownOpen && (
+              <div className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-gray-800/90 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] backdrop-blur-md border border-blue-800/50 transition-all duration-300 z-50">
+                <ul className="py-2 text-sm text-blue-300">
+                  <li>
+                    <button
+                      onClick={() => handleMenuSelect(0)} // Section Trang chủ
+                      className="block w-full text-left px-4 py-2 hover:bg-blue-900/50 hover:text-blue-200 transition-all duration-300"
+                    >
+                      Back to Main
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => handleMenuSelect(2)} // Section Play Online
+                      className="block w-full text-left px-4 py-2 hover:bg-blue-900/50 hover:text-blue-200 transition-all duration-300"
+                    >
+                      Play Online
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => handleMenuSelect(1)} // Section Play Offline
+                      className="block w-full text-left px-4 py-2 hover:bg-blue-900/50 hover:text-blue-200 transition-all duration-300"
+                    >
+                      Play Offline
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => handleMenuSelect(3)} // Section Play With Bot
+                      className="block w-full text-left px-4 py-2 hover:bg-blue-900/50 hover:text-blue-200 transition-all duration-300"
+                    >
+                      Play With Bot
+                    </button>
+                  </li>
+                  <li>
+                  <Link
+                      to="/gamemode"
+                      className="block w-full text-left px-4 py-2 hover:bg-blue-900/50 hover:text-blue-200 transition-all duration-300"
+                    >
+                      Others gamemode
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            )}
           </li>
           <li className="text-right">
             {isLoggedIn ? (
               <div className="relative">
-                {/* Avatar (ảnh đại diện mặc định) */}
                 <img
-                  src="https://store.playstation.com/store/api/chihiro/00_09_000/container/IE/en/99/EP4037-SLES51630_00-AVPLAYITCH000002/0/image?_version=00_09_000&platform=chihiro&bg_color=000000&opacity=100&w=720&h=720" // Ảnh đại diện mặc định (một hình tròn với biểu tượng người dùng)
+                  src="https://store.playstation.com/store/api/chihiro/00_09_000/container/IE/en/99/EP4037-SLES51630_00-AVPLAYITCH000002/0/image?_version=00_09_000&platform=chihiro&bg_color=000000&opacity=100&w=720&h=720"
                   alt="User Avatar"
                   className="w-10 h-10 rounded-full cursor-pointer transition-all duration-300 hover:scale-110"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                 />
-                {/* Dropdown menu khi nhấp vào avatar */}
-                {isDropdownOpen && (
+                {isUserDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-gray-800/90 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] backdrop-blur-md border border-blue-800/50 transition-all duration-300">
                     <ul className="py-2 text-sm text-blue-300">
                       <li>
                         <Link
                           to="/profile"
                           className="block px-4 py-2 hover:bg-blue-900/50 hover:text-blue-200 transition-all duration-300"
-                          onClick={() => setIsDropdownOpen(false)}
+                          onClick={() => setIsUserDropdownOpen(false)}
                         >
                           View Profile
                         </Link>
@@ -211,11 +273,11 @@ const HomePage = () => {
             ) : (
               <>
                 <Link to="/register" className={`${textColors[currentSection]} font-semibold text-base md:text-lg transition-all duration-300`}>
-                  Register
+                  Register 
                 </Link>
-                <span className={`${separatorColors[currentSection]}`}>|</span>
+                <span className={`${separatorColors[currentSection]}`}> | </span>
                 <Link to="/login" className={`${textColors[currentSection]} font-semibold text-base md:text-lg transition-all duration-300`}>
-                  Login
+                    Login
                 </Link>
               </>
             )}
@@ -403,7 +465,6 @@ const HomePage = () => {
             </div>
           </div>
         </section>
-        
 
         {/* Section 5: Footer */}
         <section
@@ -425,7 +486,7 @@ const HomePage = () => {
               </h3>
               <ul className="text-sm md:text-base space-y-4">
                 <li>
-                  <Link to="/puzzlemode" className="flex items-center text-blue-300/80 hover:text-blue-200 transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
+                  <Link to="/" className="flex items-center text-blue-300/80 hover:text-blue-200 transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
                     <span className="mr-3">🏠</span> Home
                   </Link>
                 </li>
@@ -456,7 +517,7 @@ const HomePage = () => {
               </p>
               <p className="text-sm md:text-base mb-6 text-blue-300/80 flex items-center drop-shadow-[0_0_6px_rgba(59,130,246,0.4)]">
                 <span className="mr-3">📞</span>
-                <a href="tel:0123456789" className="hover:text-blue-200 transition-all duration-300">0123 456 789</a>
+                <a href="tel:0356566213" className="hover:text-blue-200 transition-all duration-300">0356566213</a>
               </p>
               <div className="flex space-x-6 md:space-x-8">
                 <a href="#" className="text-blue-300/80 hover:text-blue-200 transform hover:scale-125 transition-all duration-300 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">
@@ -509,6 +570,26 @@ const HomePage = () => {
           />
         ))}
       </div>
+      {/* Thêm hai hình tròn ở góc trái dưới */}
+      <div className="fixed bottom-4 left-4 z-30 flex flex-col space-y-4">
+        {/* Hình tròn Leaderboard */}
+        <Link
+          to="/leaderboard"
+          className={`w-10 h-10 rounded-full bg-gradient-to-r ${buttonGradients[currentSection]} flex items-center justify-center animate-pulse-slow transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(255,255,255,0.8)]`}
+          title="Leaderboard"
+        >
+          <span className={`${textColors[currentSection]} text-lg`}>🏆</span>
+        </Link>
+
+        {/* Hình tròn Tournaments */}
+        <Link
+          to="/tournaments"
+          className={`w-10 h-10 rounded-full bg-gradient-to-r ${buttonGradients[currentSection]} flex items-center justify-center animate-pulse-slow transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(255,255,255,0.8)]`}
+          title="Tournaments"
+        >
+          <span className={`${textColors[currentSection]} text-lg`}>🎖️</span>
+        </Link>
+      </div>
 
       {/* Modal đăng nhập cho Play Online */}
       {showLoginModal && (
@@ -516,18 +597,18 @@ const HomePage = () => {
           <div className="bg-gray-900/80 border border-purple-500/50 rounded-2xl shadow-[0_0_20px_rgba(147,51,234,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
             <div className="flex justify-end">
               <button
-                onClick={() => setShowLoginModal(false)} // Đóng modal khi nhấp vào nút Close
+                onClick={() => setShowLoginModal(false)}
                 className="text-purple-200 hover:text-purple-100 transition-colors duration-300"
               >
-                &times; {/* Biểu tượng đóng (X) */}
+                ×
               </button>
             </div>
             <h2 className="text-2xl font-bold text-purple-300 mb-4 drop-shadow-[0_0_8px_rgba(147,51,234,0.5)]">Yêu Cầu Đăng Nhập</h2>
             <p className="text-purple-200 mb-6">Bạn cần đăng nhập để chơi chế độ này.</p>
             <button
               onClick={() => {
-                navigate('/login'); // Điều hướng đến trang login
-                setShowLoginModal(false); // Đóng modal
+                navigate('/login');
+                setShowLoginModal(false);
               }}
               className="bg-purple-600 text-white py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(147,51,234,0.7)] hover:bg-purple-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(147,51,234,0.9)] transition-all duration-300"
             >
@@ -540,7 +621,7 @@ const HomePage = () => {
   );
 };
 
-// CSS cho animation
+// CSS cho animation (giữ nguyên như cũ)
 const styles = `
   @keyframes chessUnfold {
     0% {

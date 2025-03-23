@@ -219,7 +219,7 @@ function PlayOfflinePage() {
             position={gamePosition}
             onPieceDrop={onDrop}
             onSquareClick={onSquareClick}
-            boardWidth={600}
+            boardWidth={550}
             customSquareStyles={customSquareStyles()}
             customBoardStyle={{ pointerEvents: showPromotionOptions ? 'none' : 'auto', position: 'static', zIndex: 10, margin: '0 auto' }}
             animationDuration={300}
