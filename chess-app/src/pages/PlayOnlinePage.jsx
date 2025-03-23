@@ -19,7 +19,26 @@ const PlayOnlinePage = () => {
   const [promotionMove, setPromotionMove] = useState(null);
   const [showPromotionOptions, setShowPromotionOptions] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [boardWidth, setBoardWidth] = useState(550);
   const navigate = useNavigate();
+
+  // Responsive board width
+  React.useEffect(() => {
+    const updateBoardWidth = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        setBoardWidth(Math.min(width - 40, 350));
+      } else if (width < 1024) {
+        setBoardWidth(450);
+      } else {
+        setBoardWidth(550);
+      }
+    };
+
+    updateBoardWidth();
+    window.addEventListener("resize", updateBoardWidth);
+    return () => window.removeEventListener("resize", updateBoardWidth);
+  }, []);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -123,16 +142,25 @@ const PlayOnlinePage = () => {
   };
 
   return (
-    <div className="relative overflow-x-hidden min-h-screen font-sans bg-gradient-to-b from-purple-900 to-fuchsia-900">
+    <div className="relative overflow-x-hidden min-h-screen font-sans bg-gradient-to-b from-purple-950 to-fuchsia-950">
+      {/* Navbar */}
       <nav className="bg-fuchsia-900/90 shadow-[0_0_15px_rgba(217,70,239,0.5)] py-3 top-0 left-0 right-0 z-50 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md">
         <ul className="flex justify-between items-center list-none px-4 md:px-6">
           <li>
             <Link to="/">
-              <img src={logo} alt="Chess Logo" className="h-12 md:h-16 w-auto transition-transform duration-300 hover:scale-110" style={{ filter: `drop-shadow(0 0 10px rgba(217,70,239,0.8))` }} />
+              <img
+                src={logo}
+                alt="Chess Logo"
+                className="h-12 md:h-16 w-auto transition-transform duration-300 hover:scale-110"
+                style={{ filter: `drop-shadow(0 0 10px rgba(217,70,239,0.8))` }}
+              />
             </Link>
           </li>
           <li className="flex-1 text-center">
-            <Link to="/" className="text-purple-400 hover:text-purple-200 hover:drop-shadow-[0_0_8px_rgba(217,70,239,0.8)] font-semibold text-base md:text-lg transition-all duration-300">
+            <Link
+              to="/"
+              className="text-purple-400 hover:text-purple-200 hover:drop-shadow-[0_0_8px_rgba(217,70,239,0.8)] font-semibold text-base md:text-lg transition-all duration-300"
+            >
               Home
             </Link>
           </li>
@@ -145,11 +173,17 @@ const PlayOnlinePage = () => {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               />
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-50">
-                  <button onClick={handleViewProfile} className="block w-full text-left px-4 py-2 text-purple-200 hover:bg-fuchsia-700 hover:text-fuchsia-100 transition-all duration-300">
+                <div className="absolute right-0 mt-2 w-48 bg-fuchsia-900 rounded-md shadow-lg py-1 z-50 border border-fuchsia-500/50">
+                  <button
+                    onClick={handleViewProfile}
+                    className="block w-full text-left px-4 py-2 text-purple-200 hover:bg-fuchsia-700 hover:text-fuchsia-100 transition-all duration-300"
+                  >
                     View Profile
                   </button>
-                  <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-purple-200 hover:bg-fuchsia-700 hover:text-fuchsia-100 transition-all duration-300">
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-purple-200 hover:bg-fuchsia-700 hover:text-fuchsia-100 transition-all duration-300"
+                  >
                     Logout
                   </button>
                 </div>
@@ -159,124 +193,172 @@ const PlayOnlinePage = () => {
         </ul>
       </nav>
 
+      {/* Main Content */}
       <div className="flex flex-col items-center min-h-screen p-4 mt-2">
-        <h1 className="text-xl font-semibold text-fuchsia-300 mb-6 drop-shadow-[0_0_10px_rgba(217,70,239,0.7)]">Online Chess</h1>
+        <h1 className="text-5xl font-bold text-fuchsia-300 mb-6 drop-shadow-[0_0_10px_rgba(217,70,239,0.7)]">
+          Online Chess
+        </h1>
 
-        <div style={{ width: '600px', height: '600px' }}>
-          <Chessboard
-            position={gamePosition}
-            onPieceDrop={onDrop}
-            onSquareClick={onSquareClick}
-            boardWidth={600}
-            customSquareStyles={customSquareStyles()}
-            customBoardStyle={{ pointerEvents: showPromotionOptions ? 'none' : 'auto', position: 'static', zIndex: 10, margin: '0 auto' }}
-            animationDuration={300}
-            draggable={true}
-          />
+        <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-0">
+          {/* Left Column: Chessboard */}
+          <div className="w-full lg:w-2/3 flex flex-col items-center">
+            <div style={{ width: boardWidth, height: boardWidth }}>
+              <Chessboard
+                position={gamePosition}
+                onPieceDrop={onDrop}
+                onSquareClick={onSquareClick}
+                boardWidth={boardWidth}
+                customSquareStyles={customSquareStyles()}
+                customLightSquareStyle={{ backgroundColor: "#E9D8FD" }}
+                customDarkSquareStyle={{ backgroundColor: "#6B21A8" }}
+                animationDuration={300}
+                draggable={true}
+              />
+            </div>
+          </div>
+
+          {/* Right Column: Move History, Chat, Players, and Current Turn */}
+          <div className="w-full lg:w-1/3 flex flex-col gap-4">
+            <div
+              style={{ height: boardWidth / 2 - 16 }}
+              className="bg-fuchsia-900/80 rounded-2xl shadow-[0_0_15px_rgba(217,70,239,0.5)] border border-fuchsia-500/50 p-4 overflow-y-auto transition-all duration-300 hover:shadow-[0_0_20px_rgba(217,70,239,0.7)]"
+            >
+              <h3 className="text-lg font-semibold text-fuchsia-300 mb-3 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
+                Move History
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-fuchsia-200 font-semibold">White</div>
+                <div className="text-fuchsia-200 font-semibold">Black</div>
+                {moveHistory.map((move, index) => {
+                  const isWhiteMove = move.player === player1;
+                  return (
+                    <React.Fragment key={index}>
+                      <div className="text-fuchsia-200 text-sm">
+                        {isWhiteMove ? `Move ${Math.floor(index / 2) + 1}: ${move.move}` : ''}
+                      </div>
+                      <div className="text-fuchsia-200 text-sm">
+                        {!isWhiteMove ? `Move ${Math.floor(index / 2) + 1}: ${move.move}` : ''}
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-fuchsia-900/80 rounded-2xl shadow-[0_0_15px_rgba(217,70,239,0.5)] border border-fuchsia-500/50 p-4">
+              <h3 className="text-lg font-semibold text-fuchsia-300 mb-2 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
+                Players
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <img
+                    src="https://via.placeholder.com/30?text=P1"
+                    alt="Player 1"
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <p className="text-fuchsia-200">{player1} (White)</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <img
+                    src="https://via.placeholder.com/30?text=P2"
+                    alt="Player 2"
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <p className="text-fuchsia-200">{player2} (Black)</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-lg text-fuchsia-200">
+              Current Turn: {currentTurn === 'w' ? 'White' : 'Black'}
+            </div>
+
+            <div className="bg-fuchsia-900/80 rounded-2xl shadow-[0_0_15px_rgba(217,70,239,0.5)] border border-fuchsia-500/50 p-4">
+              <h3 className="text-lg font-semibold text-fuchsia-300 mb-2 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
+                Chat
+              </h3>
+              <div className="h-40 overflow-y-auto mb-4 text-fuchsia-200 text-sm space-y-2">
+                {messages.map((msg, index) => (
+                  <div key={index} className="flex flex-col">
+                    <span className="font-semibold">{msg.sender}</span>
+                    <span>
+                      {msg.text}{' '}
+                      <small className="text-fuchsia-400">({msg.time})</small>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <form onSubmit={handleSendMessage} className="flex gap-2">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  className="w-full px-3 py-2 bg-fuchsia-800/80 border border-fuchsia-500/50 rounded-lg text-fuchsia-100 placeholder-fuchsia-400/50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:bg-fuchsia-700/80 transition-all duration-300 shadow-[inset_0_0_8px_rgba(217,70,239,0.3)]"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_15px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(217,70,239,1)] transition-all duration-300"
+                >
+                  Send
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
 
-        {showPromotionOptions && (
-          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 bg-white p-4 rounded-lg shadow-lg flex gap-2 z-20">
-            {["q", "r", "b", "n"].map((piece) => (
+        {/* Join or Create Room Section */}
+        <div className="w-full max-w-5xl mt-6 bg-fuchsia-900/80 rounded-2xl shadow-[0_0_15px_rgba(217,70,239,0.5)] border border-fuchsia-500/50 p-4">
+          <h3 className="text-lg font-semibold text-fuchsia-300 mb-2 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
+            Join or Create Room
+          </h3>
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+              placeholder="Enter Room ID"
+              className="w-full px-3 py-2 bg-fuchsia-800/80 border border-fuchsia-500/50 rounded-lg text-fuchsia-100 placeholder-fuchsia-400/50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:bg-fuchsia-700/80 transition-all duration-300 shadow-[inset_0_0_8px_rgba(217,70,239,0.3)]"
+            />
+            <div className="flex gap-2">
               <button
-                key={piece}
-                onClick={() => promotePawn(piece)}
-                className="px-3 py-2 bg-fuchsia-600 text-white rounded hover:bg-fuchsia-700 transition-all duration-300"
+                onClick={joinRoom}
+                className="w-1/2 px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_15px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(217,70,239,1)] transition-all duration-300"
               >
-                {piece === "q" ? "Hậu" : piece === "r" ? "Xe" : piece === "b" ? "Tượng" : "Mã"}
+                Join Room
               </button>
-            ))}
-          </div>
-        )}
-        <div className="mt-4 text-lg text-fuchsia-200">Current Turn: {currentTurn === 'w' ? 'White' : 'Black'}</div>
-
-        <div className="w-full max-w-5xl mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gray-900/80 rounded-xl shadow-[0_0_15px_rgba(217,70,239,0.5)] backdrop-blur-lg border border-fuchsia-500/50 p-4">
-            <h3 className="text-xl font-bold text-fuchsia-300 mb-2 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">Players</h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <img src="https://via.placeholder.com/30?text=P1" alt="Player 1" className="w-8 h-8 rounded-full" />
-                <p className="text-fuchsia-200">{player1} (White)</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <img src="https://via.placeholder.com/30?text=P2" alt="Player 2" className="w-8 h-8 rounded-full" />
-                <p className="text-fuchsia-200">{player2} (Black)</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-900/80 rounded-xl shadow-[0_0_15px_rgba(217,70,239,0.5)] backdrop-blur-lg border border-fuchsia-500/50 p-4 h-48 overflow-y-auto">
-            <h3 className="text-xl font-bold text-fuchsia-300 mb-2 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">Move History</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-fuchsia-200 font-semibold">White</div>
-              <div className="text-fuchsia-200 font-semibold">Black</div>
-              {moveHistory.map((move, index) => {
-                const isWhiteMove = move.player === player1;
-                return (
-                  <React.Fragment key={index}>
-                    <div className="text-fuchsia-200 text-sm">{isWhiteMove ? `Move ${index + 1}: ${move.move}` : ''}</div>
-                    <div className="text-fuchsia-200 text-sm">{!isWhiteMove ? `Move ${index + 1}: ${move.move}` : ''}</div>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="bg-gray-900/80 rounded-xl shadow-[0_0_15px_rgba(217,70,239,0.5)] backdrop-blur-lg border border-fuchsia-500/50 p-4">
-            <h3 className="text-xl font-bold text-fuchsia-300 mb-2 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">Chat</h3>
-            <div className="h-40 overflow-y-auto mb-4 text-fuchsia-200 text-sm space-y-2">
-              {messages.map((msg, index) => (
-                <div key={index} className="flex flex-col">
-                  <span className="font-semibold">{msg.sender}</span>
-                  <span>{msg.text} <small className="text-fuchsia-400">({msg.time})</small></span>
-                </div>
-              ))}
-            </div>
-            <form onSubmit={handleSendMessage} className="flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type a message..."
-                className="w-full px-3 py-2 bg-gray-800/80 border border-fuchsia-500/50 rounded-lg text-fuchsia-100 placeholder-fuchsia-400/50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:bg-gray-700/80 transition-all duration-300 shadow-[inset_0_0_8px_rgba(217,70,239,0.3)]"
-              />
               <button
-                type="submit"
-                className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_15px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(217,70,239,1)] transition-all duration-300"
+                onClick={createRoom}
+                className="w-1/2 px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_15px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(217,70,239,1)] transition-all duration-300"
               >
-                Send
+                Create Room
               </button>
-            </form>
-          </div>
-
-          <div className="col-span-1 md:col-span-3 bg-gray-900/80 rounded-xl shadow-[0_0_15px_rgba(217,70,239,0.5)] backdrop-blur-lg border border-fuchsia-500/50 p-4 mt-6">
-            <h3 className="text-xl font-bold text-fuchsia-300 mb-2 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">Join or Create Room</h3>
-            <div className="space-y-4">
-              <input
-                type="text"
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                placeholder="Enter Room ID"
-                className="w-full px-3 py-2 bg-gray-800/80 border border-fuchsia-500/50 rounded-lg text-fuchsia-100 placeholder-fuchsia-400/50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 focus:bg-gray-700/80 transition-all duration-300 shadow-[inset_0_0_8px_rgba(217,70,239,0.3)]"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={joinRoom}
-                  className="w-1/2 px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_15px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(217,70,239,1)] transition-all duration-300"
-                >
-                  Join Room
-                </button>
-                <button
-                  onClick={createRoom}
-                  className="w-1/2 px-4 py-2 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_15px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(217,70,239,1)] transition-all duration-300"
-                >
-                  Create Room
-                </button>
-              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Promotion Options Modal */}
+      {showPromotionOptions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-fuchsia-900/80 border border-fuchsia-500/50 rounded-2xl shadow-[0_0_20px_rgba(217,70,239,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+            <h2 className="text-2xl font-bold text-fuchsia-300 mb-4 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
+              Promote Pawn
+            </h2>
+            <div className="flex gap-2">
+              {["q", "r", "b", "n"].map((piece) => (
+                <button
+                  key={piece}
+                  onClick={() => promotePawn(piece)}
+                  className="px-3 py-2 bg-fuchsia-600 text-white rounded hover:bg-fuchsia-700 transition-all duration-300"
+                >
+                  {piece === "q" ? "Queen" : piece === "r" ? "Rook" : piece === "b" ? "Bishop" : "Knight"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -96,6 +96,10 @@ const Login = () => {
             <Link to="/register" className="text-rose-300 hover:text-rose-100 hover:drop-shadow-[0_0_8px_rgba(251,113,133,0.8)] transition-all duration-300 text-sm md:text-base">
               Create a new account
             </Link>
+            <span className="text-rose-600 mx-2">|</span>
+            <Link to="/forgotpassword" className="text-rose-300 hover:text-rose-100 hover:drop-shadow-[0_0_8px_rgba(251,113,133,0.8)] transition-all duration-300 text-sm md:text-base">
+              Forgot Password?
+            </Link>
           </div>
         </div>
       </div>

@@ -16,12 +16,11 @@ function PuzzleMode() {
 
   const [currentPuzzle, setCurrentPuzzle] = useState(null);
   const [game, setGame] = useState(null);
-  const [status, setStatus] = useState("Đang tải thế cờ...");
+  const [status, setStatus] = useState("Loading puzzle...");
   const [moveCount, setMoveCount] = useState(0);
   const [moveHistory, setMoveHistory] = useState([]);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
-  const [showHint, setShowHint] = useState(false);
   const [showSolutionModal, setShowSolutionModal] = useState(false);
   const [isPuzzleSolved, setIsPuzzleSolved] = useState(false);
   const [playerColor, setPlayerColor] = useState(null);
@@ -29,8 +28,25 @@ function PuzzleMode() {
   const [showMoveGuide, setShowMoveGuide] = useState(false);
   const [arrows, setArrows] = useState([]);
   const [usedHintOrGuide, setUsedHintOrGuide] = useState(false);
+  const [boardWidth, setBoardWidth] = useState(550);
 
-  // Hàm lấy thông tin người dùng từ backend
+  useEffect(() => {
+    const updateBoardWidth = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        setBoardWidth(Math.min(width - 40, 350));
+      } else if (width < 1024) {
+        setBoardWidth(450);
+      } else {
+        setBoardWidth(550);
+      }
+    };
+
+    updateBoardWidth();
+    window.addEventListener("resize", updateBoardWidth);
+    return () => window.removeEventListener("resize", updateBoardWidth);
+  }, []);
+
   const fetchUserData = async () => {
     const token = localStorage.getItem("token");
     const userEmail = localStorage.getItem("userEmail");
@@ -51,40 +67,39 @@ function PuzzleMode() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const users = await response.json();
-      console.log("Dữ liệu người dùng từ API:", users);
+      console.log("User data from API:", users);
       const user = users.find((u) => u.email === userEmail);
       if (user) {
         setUserId(user.id);
         setScore(user.score || 100);
       } else {
-        throw new Error("Không tìm thấy thông tin người dùng với email: " + userEmail);
+        throw new Error("User not found with email: " + userEmail);
       }
     } catch (error) {
-      console.error("Lỗi khi lấy thông tin người dùng:", error);
+      console.error("Error fetching user data:", error);
       setScore(null);
     } finally {
       setIsLoadingScore(false);
     }
   };
 
-  // Hàm cập nhật điểm số lên backend (Thay đổi từ PATCH sang PUT)
   const updateUserScore = async (newScore) => {
     const token = localStorage.getItem("token");
     if (!token || !userId) return;
 
     try {
       const response = await fetch(`/api/users/${userId}`, {
-        method: "PUT", // Thay đổi từ PATCH sang PUT
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ score: newScore }),
       });
-      if (!response.ok) throw new Error("Không thể cập nhật điểm số");
+      if (!response.ok) throw new Error("Failed to update score");
       setScore(newScore);
     } catch (error) {
-      console.error("Lỗi khi cập nhật điểm số:", error);
+      console.error("Error updating score:", error);
     }
   };
 
@@ -99,7 +114,7 @@ function PuzzleMode() {
         const response = await fetch(
           `https://datasets-server.huggingface.co/rows?dataset=Lichess/chess-puzzles&config=default&split=train&offset=${offset}&length=1`
         );
-        if (!response.ok) throw new Error("Lỗi khi lấy dữ liệu từ Hugging Face");
+        if (!response.ok) throw new Error("Error fetching data from Hugging Face");
         const data = await response.json();
         const row = data.rows[0].row;
 
@@ -118,7 +133,7 @@ function PuzzleMode() {
           try {
             chess.move({ from: opponentFirstMove.slice(0, 2), to: opponentFirstMove.slice(2, 4) });
           } catch (error) {
-            console.error("Nước đi đầu tiên không hợp lệ:", error);
+            console.error("Invalid first move:", error);
             validPuzzle = false;
             continue;
           }
@@ -131,18 +146,18 @@ function PuzzleMode() {
             id: row.PuzzleId,
             initialFen: row.FEN,
             fen: chess.fen(),
-            description: `${row.Rating} rating - Giải trong ${playerMoves.length} nước`,
+            description: `${row.Rating} rating - Solve in ${playerMoves.length} moves`,
             maxMoves: playerMoves.length,
             points: Math.floor(row.Rating / 100) * 5,
             solution: remainingMoves,
             opponentMoves,
             playerMoves,
-            hintDetails: [`Gợi ý: Bắt đầu bằng ${playerMoves[0]}`],
+            hintDetails: [`Hint: Start with ${playerMoves[0]}`],
           };
         }
       } catch (error) {
-        console.error("Lỗi khi lấy puzzle từ Hugging Face:", error);
-        setStatus("Không thể tải thế cờ. Vui lòng thử lại.");
+        console.error("Error fetching puzzle from Hugging Face:", error);
+        setStatus("Failed to load puzzle. Please try again.");
         setIsLoading(false);
         return;
       }
@@ -152,9 +167,9 @@ function PuzzleMode() {
     setGame(chess);
     setPlayerColor(chess.turn());
     setStatus(
-      `${puzzle.description.split(" - ")[0]} - Bạn đi quân ${
-        chess.turn() === "w" ? "Trắng" : "Đen"
-      } - Cần ${puzzle.maxMoves} nước để chiếu bí`
+      `${puzzle.description.split(" - ")[0]} - You play as ${
+        chess.turn() === "w" ? "White" : "Black"
+      } - Need ${puzzle.maxMoves} moves to checkmate`
     );
     setIsLoading(false);
   };
@@ -167,7 +182,7 @@ function PuzzleMode() {
   useEffect(() => {
     const handleBeforeUnload = (event) => {
       if (moveHistory.length > 0) {
-        event.returnValue = "Bạn có chắc muốn rời khỏi trang này? Mọi dữ liệu về thế cờ sẽ bị mất.";
+        event.returnValue = "Are you sure you want to leave this page? All puzzle progress will be lost.";
         return event.returnValue;
       }
     };
@@ -216,7 +231,7 @@ function PuzzleMode() {
 
     if (move.from + move.to === correctMove) {
       if (game.isCheckmate()) {
-        setStatus("Chúc mừng! Bạn đã giải đúng thế cờ!");
+        setStatus("Congratulations! You solved the puzzle!");
         setIsPuzzleSolved(true);
         if (!usedHintOrGuide && isLoggedIn) {
           const points = currentPuzzle.points;
@@ -231,7 +246,7 @@ function PuzzleMode() {
             opponentMove = autoMove.from + autoMove.to;
             currentPuzzle.opponentMoves[currentPlayerMoveIndex] = opponentMove;
           } else {
-            setStatus("Đối thủ không còn nước đi hợp lệ!");
+            setStatus("Opponent has no valid moves!");
             setIsPuzzleSolved(true);
             return;
           }
@@ -241,7 +256,7 @@ function PuzzleMode() {
           game.move({ from: opponentMove.slice(0, 2), to: opponentMove.slice(2, 4) });
           setMoveHistory((prev) => [...prev, { move: opponentMove, player: "Opponent" }]);
           if (game.isCheckmate()) {
-            setStatus("Chúc mừng! Bạn đã giải đúng thế cờ!");
+            setStatus("Congratulations! You solved the puzzle!");
             setIsPuzzleSolved(true);
             if (!usedHintOrGuide && isLoggedIn) {
               const points = currentPuzzle.points;
@@ -250,13 +265,13 @@ function PuzzleMode() {
             }
           } else {
             setStatus(
-              `Đúng rồi! Đến lượt bạn... - Cần ${remainingMoves} nước để chiếu bí`
+              `Well done! Your turn... - Need ${remainingMoves} moves to checkmate`
             );
           }
         }, 500);
       }
     } else {
-      setStatus("Nước đi sai! Thử lại hoặc xem gợi ý.");
+      setStatus("Wrong move! Try again or view the guide.");
       game.undo();
       setMoveHistory((prev) => prev.slice(0, -1));
       setMoveCount((prev) => prev - 1);
@@ -316,12 +331,6 @@ function PuzzleMode() {
     return styles;
   };
 
-  const showHintHandler = () => {
-    setShowHint(true);
-    setUsedHintOrGuide(true);
-    setStatus(currentPuzzle.hintDetails[moveCount]);
-  };
-
   const showMoveGuideHandler = () => {
     setShowMoveGuide(true);
     setUsedHintOrGuide(true);
@@ -333,7 +342,6 @@ function PuzzleMode() {
     setMoveHistory([]);
     setSelectedSquare(null);
     setValidMoves([]);
-    setShowHint(false);
     setShowSolutionModal(false);
     setIsPuzzleSolved(false);
     setShowMoveGuide(false);
@@ -349,22 +357,21 @@ function PuzzleMode() {
     try {
       chess.move({ from: opponentFirstMove.slice(0, 2), to: opponentFirstMove.slice(2, 4) });
     } catch (error) {
-      console.error("Không thể áp dụng nước đi đầu tiên:", error);
-      setStatus("Lỗi khi reset thế cờ. Vui lòng thử thế cờ mới.");
+      console.error("Cannot apply first move:", error);
+      setStatus("Error resetting puzzle. Please try a new puzzle.");
       return;
     }
 
     setGame(chess);
     setStatus(
-      `${currentPuzzle.description.split(" - ")[0]} - Bạn đi quân ${
-        chess.turn() === "w" ? "Trắng" : "Đen"
-      } - Cần ${currentPuzzle.maxMoves} nước để chiếu bí`
+      `${currentPuzzle.description.split(" - ")[0]} - You play as ${
+        chess.turn() === "w" ? "White" : "Black"
+      } - Need ${currentPuzzle.maxMoves} moves to checkmate`
     );
     setMoveCount(0);
     setMoveHistory([]);
     setSelectedSquare(null);
     setValidMoves([]);
-    setShowHint(false);
     setShowSolutionModal(false);
     setIsPuzzleSolved(false);
     setPlayerColor(chess.turn());
@@ -408,10 +415,13 @@ function PuzzleMode() {
     });
 
     return (
-      <div className="relative w-full max-w-[48%] bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] rounded-xl shadow-[0_0_15px_rgba(192,192,192,0.5)] border border-[#C0C0C0] p-4 h-48 overflow-y-auto">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-xl font-bold text-[#E5E4E2] drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
-            Hướng dẫn từng bước
+      <div
+        style={{ height: boardWidth / 2 - 16 }} // 16px for padding (p-4)
+        className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] rounded-2xl shadow-[0_0_15px_rgba(192,192,192,0.5)] border border-[#C0C0C0] p-4 overflow-y-auto transition-all duration-300 hover:shadow-[0_0_20px_rgba(192,192,192,0.7)]"
+      >
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold text-[#E5E4E2] drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
+            Step-by-Step Guide
           </h3>
           <button
             onClick={() => setShowMoveGuide(false)}
@@ -430,7 +440,7 @@ function PuzzleMode() {
                   : ""
               }`}
             >
-              Bước {index + 1}: {step.move} ({step.player === "Player" ? "Bạn" : "Đối thủ"})
+              Step {index + 1}: {step.move} ({step.player === "Player" ? "You" : "Opponent"})
             </div>
           ))}
         </div>
@@ -508,20 +518,20 @@ function PuzzleMode() {
 
       <div className="flex flex-col items-center min-h-screen p-4">
         <h1 className="text-5xl font-bold text-[#E5E4E2] mb-6 drop-shadow-[0_0_10px_rgba(192,192,192,0.7)]">
-          Chế độ giải thế cờ
+          Puzzle Mode
         </h1>
         <div className="mb-4 text-lg text-[#D3D3D3]">
-          Điểm của bạn:{" "}
+          Your Score:{" "}
           {isLoggedIn ? (
             isLoadingScore ? (
-              "Đang tải điểm..."
+              "Loading score..."
             ) : score !== null ? (
               <span className="font-bold">{score}</span>
             ) : (
-              "Không thể tải điểm"
+              "Unable to load score"
             )
           ) : (
-            "Xin hãy đăng nhập để lưu điểm"
+            "Please log in to save your score"
           )}
         </div>
 
@@ -537,143 +547,136 @@ function PuzzleMode() {
                 animation: "spin 1s linear infinite",
               }}
             ></div>
-            <p className="text-[#D3D3D3] mt-4">Đang tải bàn cờ...</p>
+            <p className="text-[#D3D3D3] mt-4">Loading chessboard...</p>
           </div>
         ) : game ? (
-          <div style={{ width: "550px", height: "550px" }}>
-            <Chessboard
-              position={game.fen()}
-              onPieceDrop={onDrop}
-              onSquareClick={onSquareClick}
-              onSquareRightClick={onSquareRightClick}
-              boardWidth={550}
-              customSquareStyles={customSquareStyles()}
-              customBoardStyle={{ position: "static", zIndex: 10, margin: "0 auto" }}
-              boardOrientation={playerColor === "b" ? "black" : "white"}
-              customArrows={arrows}
-              customDarkSquareStyle={{ backgroundColor: "#4B7399" }}
-              customLightSquareStyle={{ backgroundColor: "#EBECD0" }}
-            />
+          <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-0">
+            {/* Left Column: Chessboard */}
+            <div className="w-full lg:w-2/3 flex flex-col items-center">
+              <div style={{ width: boardWidth, height: boardWidth }}>
+                <Chessboard
+                  position={game.fen()}
+                  onPieceDrop={onDrop}
+                  onSquareClick={onSquareClick}
+                  onSquareRightClick={onSquareRightClick}
+                  boardWidth={boardWidth}
+                  customSquareStyles={customSquareStyles()}
+                  boardOrientation={playerColor === "b" ? "black" : "white"}
+                  customArrows={arrows}
+                  customDarkSquareStyle={{ backgroundColor: "#4B7399" }}
+                  customLightSquareStyle={{ backgroundColor: "#EBECD0" }}
+                />
+              </div>
+            </div>
+
+            {/* Right Column: Move History, Step-by-Step Guide, and Buttons */}
+            <div className="w-full lg:w-1/3 flex flex-col gap-4">
+              <div
+                style={{ height: boardWidth / 2 - 16 }} // 16px for padding (p-4)
+                className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] rounded-2xl shadow-[0_0_15px_rgba(192,192,192,0.5)] border border-[#C0C0C0] p-4 overflow-y-auto transition-all duration-300 hover:shadow-[0_0_20px_rgba(192,192,192,0.7)]"
+              >
+                <h3 className="text-lg font-semibold text-[#E5E4E2] mb-3 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
+                  Move History
+                </h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {moveHistory.map((move, index) => (
+                    <div key={index} className="text-[#D3D3D3] text-sm">
+                      Move {index + 1}: {move.move} ({move.player})
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {renderMoveGuide()}
+              <div className="flex gap-4">
+                <button
+                  onClick={showMoveGuideHandler}
+                  disabled={showMoveGuide}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Show Guide
+                </button>
+                <button
+                  onClick={nextPuzzle}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
+                >
+                  Next Puzzle
+                </button>
+              </div>
+              <div className="text-lg text-[#D3D3D3]">{status}</div>
+            </div>
           </div>
         ) : (
-          <p className="text-[#D3D3D3]">Không thể tải bàn cờ.</p>
+          <p className="text-[#D3D3D3]">Unable to load chessboard.</p>
         )}
 
-        <div className="mt-4 flex gap-4">
-          <button
-            onClick={resetPuzzle}
-            className="px-4 py-2 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
-          >
-            Chơi lại
-          </button>
-          <button
-            onClick={showHintHandler}
-            disabled={showHint || isPuzzleSolved}
-            className="px-4 py-2 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Gợi ý
-          </button>
-          <button
-            onClick={showMoveGuideHandler}
-            disabled={showMoveGuide}
-            className="px-4 py-2 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Hiển thị từng bước
-          </button>
-          <button
-            onClick={nextPuzzle}
-            className="px-4 py-2 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
-          >
-            Thế cờ tiếp theo
-          </button>
-        </div>
-
-        <div className="mt-4 text-lg text-[#D3D3D3]">{status}</div>
-
-        <div className="w-full max-w-5xl mt-6 flex gap-4">
-          <div className="w-full max-w-[48%] bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] rounded-xl shadow-[0_0_15px_rgba(192,192,192,0.5)] border border-[#C0C0C0] p-4 h-48 overflow-y-auto">
-            <h3 className="text-xl font-bold text-[#E5E4E2] mb-2 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
-              Lịch sử nước đi
-            </h3>
-            <div className="grid grid-cols-1 gap-2">
-              {moveHistory.map((move, index) => (
-                <div key={index} className="text-[#D3D3D3] text-sm">
-                  Nước {index + 1}: {move.move} ({move.player})
-                </div>
-              ))}
+        {showSolutionModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] border border-[#C0C0C0] rounded-2xl shadow-[0_0_20px_rgba(192,192,192,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setShowSolutionModal(false)}
+                  className="text-[#C0C0C0] hover:text-[#E5E4E2] transition-colors duration-300"
+                >
+                  ×
+                </button>
+              </div>
+              <h2 className="text-2xl font-bold text-[#E5E4E2] mb-4 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
+                Solution
+              </h2>
+              <p className="text-[#D3D3D3] mb-6">
+                The correct moves are: {currentPuzzle.playerMoves.join(", ")}.
+              </p>
+              <button
+                onClick={() => {
+                  setShowSolutionModal(false);
+                  resetPuzzle();
+                }}
+                className="bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
+              >
+                Try Again
+              </button>
             </div>
           </div>
-          {renderMoveGuide()}
-        </div>
+        )}
+
+        {showExitModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] border border-[#C0C0C0] rounded-2xl shadow-[0_0_20px_rgba(192,192,192,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setShowExitModal(false)}
+                  className="text-[#C0C0C0] hover:text-[#E5E4E2] transition-colors duration-300"
+                >
+                  ×
+                </button>
+              </div>
+              <h2 className="text-2xl font-bold text-[#E5E4E2] mb-4 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
+                Warning
+              </h2>
+              <p className="text-[#D3D3D3] mb-6">
+                Are you sure you want to leave this page? All puzzle progress will be lost.
+              </p>
+              <button
+                onClick={confirmExit}
+                className="bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+
+        <style jsx>{`
+          @keyframes spin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
       </div>
-
-      {showSolutionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] border border-[#C0C0C0] rounded-2xl shadow-[0_0_20px_rgba(192,192,192,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => setShowSolutionModal(false)}
-                className="text-[#C0C0C0] hover:text-[#E5E4E2] transition-colors duration-300"
-              >
-                ×
-              </button>
-            </div>
-            <h2 className="text-2xl font-bold text-[#E5E4E2] mb-4 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
-              Đáp án
-            </h2>
-            <p className="text-[#D3D3D3] mb-6">
-              Các nước đi đúng là: {currentPuzzle.playerMoves.join(", ")}.
-            </p>
-            <button
-              onClick={() => {
-                setShowSolutionModal(false);
-                resetPuzzle();
-              }}
-              className="bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
-            >
-              Thử lại
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showExitModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] border border-[#C0C0C0] rounded-2xl shadow-[0_0_20px_rgba(192,192,192,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => setShowExitModal(false)}
-                className="text-[#C0C0C0] hover:text-[#E5E4E2] transition-colors duration-300"
-              >
-                ×
-              </button>
-            </div>
-            <h2 className="text-2xl font-bold text-[#E5E4E2] mb-4 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
-              Cảnh Báo
-            </h2>
-            <p className="text-[#D3D3D3] mb-6">
-              Bạn có chắc muốn rời khỏi trang này? Mọi dữ liệu về thế cờ sẽ bị mất.
-            </p>
-            <button
-              onClick={confirmExit}
-              className="bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </div>
   );
 }

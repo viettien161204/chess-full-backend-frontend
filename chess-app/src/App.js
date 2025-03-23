@@ -2,6 +2,7 @@ import logo from './logo.svg';
 import './App.css';
 import Home from "./pages/HomePage";
 import Login from "./pages/Login";
+import Forgotpassword from "./pages/ForgotPassword";
 import Register from "./pages/Register";
 
 import Dash from "./pages/DashboardPage";
@@ -32,6 +33,8 @@ function App() {
       <Route path="/register" element={<Register />}>
       </Route>
       <Route path="/login" element={<Login />}>
+      </Route>
+      <Route path="/forgotpassword" element={<Forgotpassword/>}>
       </Route>
       <Route path="/chessbot" element={<PlayWithBot />}>
       </Route>

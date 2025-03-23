@@ -5,6 +5,7 @@
   "proxy": "http://150.95.112.187:8080",
   "dependencies": {
     "@chrisoakman/chessboardjs": "^1.0.0",
+    "@emailjs/browser": "^4.4.1",
     "@hookform/resolvers": "^4.1.3",
     "axios": "^1.8.1",
     "chess.js": "^1.1.0",

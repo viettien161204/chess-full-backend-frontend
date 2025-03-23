@@ -203,7 +203,7 @@ function GameModes() {
               </p>
             </div>
             <button
-              onClick={() => handlePlayClick("/leaderboard")}
+              onClick={() => handlePlayClick("/inDev")}
               className="mt-6 px-6 py-3 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300 font-semibold text-lg"
             >
               Play

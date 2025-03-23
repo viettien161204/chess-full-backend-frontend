@@ -92,6 +92,7 @@ const Register = () => {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+            <label className="block text-rose-300 text-xs md:text-sm font-bold mb-1 drop-shadow-[0_0_4px_rgba(251,113,133,0.5)]">Note: Please use your own email, otherwise you will not be able to change your password later.</label>
             <div className="mb-3 md:mb-4">
               <label className="block text-rose-200 text-xs md:text-sm font-bold mb-1 drop-shadow-[0_0_4px_rgba(251,113,133,0.5)]">Password</label>
               <input

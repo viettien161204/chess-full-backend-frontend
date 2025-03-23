@@ -7,7 +7,7 @@ import logo from './1.png';
 function PlayOfflinePage() {
   const [game, setGame] = useState(new Chess());
   const [gamePosition, setGamePosition] = useState('start');
-  const [status, setStatus] = useState("Trắng đi trước");
+  const [status, setStatus] = useState("White to move");
   const [promotionMove, setPromotionMove] = useState(null);
   const [showPromotionOptions, setShowPromotionOptions] = useState(false);
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -18,8 +18,27 @@ function PlayOfflinePage() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [nextPath, setNextPath] = useState(null);
+  const [boardWidth, setBoardWidth] = useState(550);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Responsive board width
+  useEffect(() => {
+    const updateBoardWidth = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        setBoardWidth(Math.min(width - 40, 350));
+      } else if (width < 1024) {
+        setBoardWidth(450);
+      } else {
+        setBoardWidth(550);
+      }
+    };
+
+    updateBoardWidth();
+    window.addEventListener("resize", updateBoardWidth);
+    return () => window.removeEventListener("resize", updateBoardWidth);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -27,7 +46,7 @@ function PlayOfflinePage() {
 
     const handleBeforeUnload = (event) => {
       if (moveHistory.length > 0 || game.fen() !== 'start') {
-        const confirmationMessage = "Bạn có chắc muốn rời khỏi trang này? Mọi dữ liệu về ván đấu sẽ bị mất.";
+        const confirmationMessage = "Are you sure you want to leave this page? All game progress will be lost.";
         (event || window.event).returnValue = confirmationMessage;
         return confirmationMessage;
       }
@@ -60,12 +79,12 @@ function PlayOfflinePage() {
   const updateStatusAndHistory = (moveData = null) => {
     if (game.isGameOver()) {
       if (game.isCheckmate()) {
-        setStatus(`Chiếu hết! ${game.turn() === "w" ? "Đen thắng" : "Trắng thắng"}`);
+        setStatus(`Checkmate! ${game.turn() === "w" ? "Black wins" : "White wins"}`);
       } else if (game.isDraw()) {
-        setStatus("Hòa!");
+        setStatus("Draw!");
       }
     } else {
-      setStatus(`Lượt đi của ${game.turn() === "w" ? "Trắng" : "Đen"}`);
+      setStatus(`${game.turn() === "w" ? "White" : "Black"} to move`);
     }
     if (moveData) {
       const moveNotation = `${moveData.san}`;
@@ -137,7 +156,7 @@ function PlayOfflinePage() {
   const resetGame = () => {
     game.reset();
     setGamePosition('start');
-    setStatus("Trắng đi trước");
+    setStatus("White to move");
     setMoveHistory([]);
     setShowResetModal(false);
   };
@@ -168,16 +187,25 @@ function PlayOfflinePage() {
   };
 
   return (
-    <div className="relative overflow-x-hidden min-h-screen font-sans bg-gradient-to-b from-teal-900 to-emerald-900">
+    <div className="relative overflow-x-hidden min-h-screen font-sans bg-gradient-to-b from-teal-900 to-emerald-950">
+      {/* Navbar */}
       <nav className="bg-teal-950/90 shadow-[0_0_15px_rgba(4,47,46,0.5)] py-3 z-50 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md">
         <ul className="flex justify-between items-center list-none px-4 md:px-6">
           <li>
             <Link to="/">
-              <img src={logo} alt="Chess Logo" className="h-12 md:h-16 w-auto transition-transform duration-300 hover:scale-110" style={{ filter: `drop-shadow(0 0 10px rgba(4,47,46,0.8))` }} />
+              <img
+                src={logo}
+                alt="Chess Logo"
+                className="h-12 md:h-16 w-auto transition-transform duration-300 hover:scale-110"
+                style={{ filter: `drop-shadow(0 0 10px rgba(4,47,46,0.8))` }}
+              />
             </Link>
           </li>
           <li className="flex-1 text-center">
-            <Link to="/" className="text-emerald-400 hover:text-emerald-200 hover:drop-shadow-[0_0_8px_rgba(4,47,46,0.8)] font-semibold text-base md:text-lg transition-all duration-300">
+            <Link
+              to="/"
+              className="text-emerald-400 hover:text-emerald-200 hover:drop-shadow-[0_0_8px_rgba(4,47,46,0.8)] font-semibold text-base md:text-lg transition-all duration-300"
+            >
               Home
             </Link>
           </li>
@@ -191,11 +219,17 @@ function PlayOfflinePage() {
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                 />
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-50">
-                    <button onClick={handleViewProfile} className="block w-full text-left px-4 py-2 text-emerald-200 hover:bg-emerald-800 hover:text-emerald-100 transition-all duration-300">
+                  <div className="absolute right-0 mt-2 w-48 bg-teal-950 rounded-md shadow-lg py-1 z-50 border border-emerald-500/50">
+                    <button
+                      onClick={handleViewProfile}
+                      className="block w-full text-left px-4 py-2 text-emerald-200 hover:bg-emerald-800 hover:text-emerald-100 transition-all duration-300"
+                    >
                       View Profile
                     </button>
-                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-emerald-200 hover:bg-emerald-800 hover:text-emerald-100 transition-all duration-300">
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-emerald-200 hover:bg-emerald-800 hover:text-emerald-100 transition-all duration-300"
+                    >
                       Logout
                     </button>
                   </div>
@@ -203,80 +237,126 @@ function PlayOfflinePage() {
               </div>
             ) : (
               <div className="flex gap-4">
-                <Link to="/register" className="text-emerald-200 hover:text-emerald-100 hover:underline transition-all duration-300">Register</Link>
-                <Link to="/login" className="text-emerald-200 hover:text-emerald-100 hover:underline transition-all duration-300">Login</Link>
+                <Link
+                  to="/register"
+                  className="text-emerald-200 hover:text-emerald-100 hover:drop-shadow-[0_0_8px_rgba(4,47,46,0.8)] transition-all duration-300"
+                >
+                  Register
+                </Link>
+                <Link
+                  to="/login"
+                  className="text-emerald-200 hover:text-emerald-100 hover:drop-shadow-[0_0_8px_rgba(4,47,46,0.8)] transition-all duration-300"
+                >
+                  Login
+                </Link>
               </div>
             )}
           </li>
         </ul>
       </nav>
 
+      {/* Main Content */}
       <div className="flex flex-col items-center min-h-screen p-4">
-        <h1 className="text-xl font-semibold text-emerald-300 mb-6 drop-shadow-[0_0_10px_rgba(20,83,45,0.7)]">Offline Chess</h1>
+        <h1 className="text-5xl font-bold text-emerald-300 mb-6 drop-shadow-[0_0_10px_rgba(20,83,45,0.7)]">
+          Offline Chess
+        </h1>
 
-        <div style={{ width: '600px', height: '600px' }}>
-          <Chessboard
-            position={gamePosition}
-            onPieceDrop={onDrop}
-            onSquareClick={onSquareClick}
-            boardWidth={550}
-            customSquareStyles={customSquareStyles()}
-            customBoardStyle={{ pointerEvents: showPromotionOptions ? 'none' : 'auto', position: 'static', zIndex: 10, margin: '0 auto' }}
-            animationDuration={300}
-            draggable={true}
-          />
-        </div>
-
-        {showPromotionOptions && (
-          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 bg-white p-4 rounded-lg shadow-lg flex gap-2 z-20">
-            {["q", "r", "b", "n"].map((piece) => (
-              <button
-                key={piece}
-                onClick={() => promotePawn(piece)}
-                className="px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-all duration-300"
-              >
-                {piece === "q" ? "Hậu" : piece === "r" ? "Xe" : piece === "b" ? "Tượng" : "Mã"}
-              </button>
-            ))}
+        <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-0">
+          {/* Left Column: Chessboard */}
+          <div className="w-full lg:w-2/3 flex flex-col items-center">
+            <div style={{ width: boardWidth, height: boardWidth }}>
+              <Chessboard
+                position={gamePosition}
+                onPieceDrop={onDrop}
+                onSquareClick={onSquareClick}
+                boardWidth={boardWidth}
+                customSquareStyles={customSquareStyles()}
+                customLightSquareStyle={{ backgroundColor: "#A3E4D7" }}
+                customDarkSquareStyle={{ backgroundColor: "#1A5E63" }}
+                animationDuration={300}
+                draggable={true}
+              />
+            </div>
           </div>
-        )}
 
-        <div className="mt-4 flex gap-4">
-          <button
-            onClick={newGame}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-[0_0_15px_rgba(20,83,45,0.7)] hover:bg-emerald-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(20,83,45,1)] transition-all duration-300"
-          >
-            Game mới
-          </button>
-        </div>
-        <div className="mt-4 text-lg text-emerald-200">{status}</div>
-
-        <div className="w-full max-w-5xl mt-6 bg-gray-900/80 rounded-xl shadow-[0_0_15px_rgba(20,83,45,0.5)] backdrop-blur-lg border border-emerald-500/50 p-4 h-48 overflow-y-auto">
-          <h3 className="text-xl font-bold text-emerald-300 mb-2 drop-shadow-[0_0_8px_rgba(20,83,45,0.5)]">Move History</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-emerald-200 font-semibold">White</div>
-            <div className="text-emerald-200 font-semibold">Black</div>
-            {moveHistory.map((move, index) => {
-              const isWhiteMove = move.player === 'Player 1';
-              return (
-                <React.Fragment key={index}>
-                  <div className="text-emerald-200 text-sm">{isWhiteMove ? `Move ${index + 1}: ${move.move}` : ''}</div>
-                  <div className="text-emerald-200 text-sm">{!isWhiteMove ? `Move ${index + 1}: ${move.move}` : ''}</div>
-                </React.Fragment>
-              );
-            })}
+          {/* Right Column: Move History, Status, and New Game Button */}
+          <div className="w-full lg:w-1/3 flex flex-col gap-4">
+            <div
+              style={{ height: boardWidth / 2 - 16 }}
+              className="bg-teal-950/80 rounded-2xl shadow-[0_0_15px_rgba(20,83,45,0.5)] border border-emerald-500/50 p-4 overflow-y-auto transition-all duration-300 hover:shadow-[0_0_20px_rgba(20,83,45,0.7)]"
+            >
+              <h3 className="text-lg font-semibold text-emerald-300 mb-3 drop-shadow-[0_0_8px_rgba(20,83,45,0.5)]">
+                Move History
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-emerald-200 font-semibold">White</div>
+                <div className="text-emerald-200 font-semibold">Black</div>
+                {moveHistory.map((move, index) => {
+                  const isWhiteMove = move.player === 'Player 1';
+                  return (
+                    <React.Fragment key={index}>
+                      <div className="text-emerald-200 text-sm">
+                        {isWhiteMove ? `Move ${Math.floor(index / 2) + 1}: ${move.move}` : ''}
+                      </div>
+                      <div className="text-emerald-200 text-sm">
+                        {!isWhiteMove ? `Move ${Math.floor(index / 2) + 1}: ${move.move}` : ''}
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="text-lg text-emerald-200">{status}</div>
+            <button
+              onClick={newGame}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-[0_0_15px_rgba(20,83,45,0.7)] hover:bg-emerald-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(20,83,45,1)] transition-all duration-300"
+            >
+              New Game
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Promotion Options Modal */}
+      {showPromotionOptions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-teal-950/80 border border-emerald-500/50 rounded-2xl shadow-[0_0_20px_rgba(20,83,45,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+            <h2 className="text-2xl font-bold text-emerald-300 mb-4 drop-shadow-[0_0_8px_rgba(20,83,45,0.5)]">
+              Promote Pawn
+            </h2>
+            <div className="flex gap-2">
+              {["q", "r", "b", "n"].map((piece) => (
+                <button
+                  key={piece}
+                  onClick={() => promotePawn(piece)}
+                  className="px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-all duration-300"
+                >
+                  {piece === "q" ? "Queen" : piece === "r" ? "Rook" : piece === "b" ? "Bishop" : "Knight"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Modal */}
       {showResetModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-gray-900/80 border border-emerald-500/50 rounded-2xl shadow-[0_0_20px_rgba(20,83,45,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+          <div className="bg-teal-950/80 border border-emerald-500/50 rounded-2xl shadow-[0_0_20px_rgba(20,83,45,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
             <div className="flex justify-end mb-4">
-              <button onClick={() => setShowResetModal(false)} className="text-emerald-200 hover:text-emerald-100 transition-colors duration-300">×</button>
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="text-emerald-200 hover:text-emerald-100 transition-colors duration-300"
+              >
+                ×
+              </button>
             </div>
-            <h2 className="text-2xl font-bold text-emerald-300 mb-4 drop-shadow-[0_0_8px_rgba(20,83,45,0.5)]">Xác Nhận</h2>
-            <p className="text-emerald-200 mb-6">Bạn có chắc, mọi dữ liệu về ván đấu sẽ bị xóa.</p>
+            <h2 className="text-2xl font-bold text-emerald-300 mb-4 drop-shadow-[0_0_8px_rgba(20,83,45,0.5)]">
+              Confirm Reset
+            </h2>
+            <p className="text-emerald-200 mb-6">
+              Are you sure? All game progress will be lost.
+            </p>
             <button
               onClick={resetGame}
               className="bg-emerald-600 text-white py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(20,83,45,0.7)] hover:bg-emerald-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(20,83,45,0.9)] transition-all duration-300"
@@ -287,14 +367,24 @@ function PlayOfflinePage() {
         </div>
       )}
 
+      {/* Exit Warning Modal */}
       {showExitModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-gray-900/80 border border-emerald-500/50 rounded-2xl shadow-[0_0_20px_rgba(20,83,45,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+          <div className="bg-teal-950/80 border border-emerald-500/50 rounded-2xl shadow-[0_0_20px_rgba(20,83,45,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
             <div className="flex justify-end mb-4">
-              <button onClick={() => { setShowExitModal(false); setNextPath(null); }} className="text-emerald-200 hover:text-emerald-100 transition-colors duration-300">×</button>
+              <button
+                onClick={() => { setShowExitModal(false); setNextPath(null); }}
+                className="text-emerald-200 hover:text-emerald-100 transition-colors duration-300"
+              >
+                ×
+              </button>
             </div>
-            <h2 className="text-2xl font-bold text-emerald-300 mb-4 drop-shadow-[0_0_8px_rgba(20,83,45,0.5)]">Cảnh Báo</h2>
-            <p className="text-emerald-200 mb-6">Bạn có chắc muốn rời khỏi trang này? Mọi dữ liệu về ván đấu sẽ bị mất.</p>
+            <h2 className="text-2xl font-bold text-emerald-300 mb-4 drop-shadow-[0_0_8px_rgba(20,83,45,0.5)]">
+              Warning
+            </h2>
+            <p className="text-emerald-200 mb-6">
+              Are you sure you want to leave this page? All game progress will be lost.
+            </p>
             <button
               onClick={confirmExit}
               className="bg-emerald-600 text-white py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(20,83,45,0.7)] hover:bg-emerald-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(20,83,45,0.9)] transition-all duration-300"
