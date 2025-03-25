@@ -11,7 +11,7 @@ function PlayWithBot() {
   const [showPromotionOptions, setShowPromotionOptions] = useState(false);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
-  const [botLevel, setBotLevel] = useState(3);
+  const [skillLevel, setSkillLevel] = useState(10); // Thay botLevel thành skillLevel (0-20), mặc định là 10
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -20,10 +20,119 @@ function PlayWithBot() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [nextPath, setNextPath] = useState(null);
   const [boardWidth, setBoardWidth] = useState(550);
+  const [selectedBot, setSelectedBot] = useState('stockfish'); // Đặt Stockfish làm mặc định
+  const [stockfishError, setStockfishError] = useState(null);
   const workerRef = useRef(null);
+  const stockfishRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Tính Elo và mức độ khó dựa trên skillLevel
+  const calculateEloAndDifficulty = (skillLevel) => {
+    const elo = 800 + (skillLevel * 120); // Ánh xạ skillLevel (0-20) thành Elo (800-3200)
+    let difficulty = '';
+    if (elo <= 1400) {
+      difficulty = 'Easy';
+    } else if (elo <= 2000) {
+      difficulty = 'Medium';
+    } else if (elo <= 2600) {
+      difficulty = 'Hard';
+    } else {
+      difficulty = 'Expert';
+    }
+    return { elo, difficulty };
+  };
+
+  const { elo, difficulty } = calculateEloAndDifficulty(skillLevel);
+
+  // Khởi tạo Stockfish với Web Worker
+  useEffect(() => {
+    const loadStockfish = async () => {
+      try {
+        const stockfish = new Worker('/stockfish/stockfish.js');
+        stockfishRef.current = stockfish;
+
+        stockfish.onmessage = (event) => {
+          const message = event.data;
+          if (message.startsWith('bestmove')) {
+            const bestMove = message.split(' ')[1];
+            if (bestMove) {
+              const move = game.move({
+                from: bestMove.substring(0, 2),
+                to: bestMove.substring(2, 4),
+                promotion: bestMove.length > 4 ? bestMove.substring(4, 5) : undefined,
+              });
+              if (move) {
+                updateStatusAndHistory(move);
+              } else {
+                console.error("Stockfish returned an invalid move:", bestMove);
+                setStatus("Stockfish failed to find a valid move");
+              }
+            }
+            setIsBotThinking(false);
+          }
+        };
+
+        stockfish.onerror = (error) => {
+          console.error("Stockfish Worker error:", error);
+          setStockfishError("Failed to communicate with Stockfish Worker.");
+        };
+
+        stockfish.postMessage('uci');
+        stockfish.postMessage(`setoption name Skill Level value ${skillLevel}`);
+        stockfish.postMessage('setoption name UCI_LimitStrength value true');
+        stockfish.postMessage('isready');
+
+        return () => {
+          if (stockfishRef.current) {
+            stockfishRef.current.terminate();
+          }
+        };
+      } catch (error) {
+        console.error("Error loading Stockfish:", error);
+        setStockfishError("Error loading Stockfish: " + error.message);
+      }
+    };
+
+    loadStockfish();
+  }, [game]);
+
+  // Khởi tạo worker cho bot của bạn
+  useEffect(() => {
+    workerRef.current = new Worker(new URL("../botWorker.worker.js", import.meta.url));
+    workerRef.current.onmessage = (event) => {
+      const bestMove = event.data;
+      if (bestMove) {
+        game.move(bestMove);
+        updateStatusAndHistory(bestMove);
+      } else {
+        console.error("Bot failed to return a valid move");
+        setStatus("Bot failed to find a move");
+      }
+      setIsBotThinking(false);
+    };
+    return () => workerRef.current.terminate();
+  }, [game]);
+
+  // Responsive board width
+  useEffect(() => {
+    const updateBoardWidth = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        setBoardWidth(Math.min(width - 40, 350));
+      } else if (width < 1024) {
+        setBoardWidth(450);
+      } else {
+        setBoardWidth(550);
+      }
+    };
+
+    updateBoardWidth();
+    window.addEventListener("resize", updateBoardWidth);
+    return () => window.removeEventListener("resize", updateBoardWidth);
+  }, []);
+
+  // Xử lý navigation và xác nhận thoát
   useEffect(() => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
@@ -58,49 +167,24 @@ function PlayWithBot() {
     };
   }, [moveHistory, game]);
 
-  useEffect(() => {
-    workerRef.current = new Worker(new URL("../botWorker.worker.js", import.meta.url));
-    workerRef.current.onmessage = (event) => {
-      const bestMove = event.data;
-      if (bestMove) {
-        game.move(bestMove);
-        updateStatusAndHistory(bestMove);
-      } else {
-        console.error("Bot failed to return a valid move");
-        setStatus("Bot failed to find a move");
-      }
-      setIsBotThinking(false);
-    };
-    return () => workerRef.current.terminate();
-  }, [game]);
-
+  // Xử lý nước đi của bot
   const makeBotMove = () => {
     setIsBotThinking(true);
-    console.log("Sending FEN to worker:", game.fen());
-    workerRef.current.postMessage({ fen: game.fen() });
+    if (selectedBot === 'custom') {
+      console.log("Sending FEN to worker:", game.fen());
+      workerRef.current.postMessage({ fen: game.fen() });
+    } else if (stockfishRef.current) {
+      stockfishRef.current.postMessage('position fen ' + game.fen());
+      stockfishRef.current.postMessage(`go depth ${Math.floor(skillLevel / 4) + 1}`); // Ánh xạ skillLevel thành depth
+    } else {
+      setIsBotThinking(false);
+      setStatus("Stockfish is not available. Please select Custom Bot.");
+    }
   };
 
   useEffect(() => {
     if (game.turn() === "b" && !game.isGameOver()) setTimeout(makeBotMove, 500);
-  }, [game.fen()]);
-
-  // Responsive board width
-  useEffect(() => {
-    const updateBoardWidth = () => {
-      const width = window.innerWidth;
-      if (width < 640) {
-        setBoardWidth(Math.min(width - 40, 350));
-      } else if (width < 1024) {
-        setBoardWidth(450);
-      } else {
-        setBoardWidth(550);
-      }
-    };
-
-    updateBoardWidth();
-    window.addEventListener("resize", updateBoardWidth);
-    return () => window.removeEventListener("resize", updateBoardWidth);
-  }, []);
+  }, [game.fen(), selectedBot, skillLevel]);
 
   const onSquareClick = (square) => {
     if (showPromotionOptions) return;
@@ -177,6 +261,10 @@ function PlayWithBot() {
     setPromotionMove(null);
     setMoveHistory([]);
     setShowResetModal(false);
+    if (selectedBot === 'stockfish' && stockfishRef.current) {
+      stockfishRef.current.postMessage('ucinewgame');
+      stockfishRef.current.postMessage('isready');
+    }
   };
 
   const handleLogout = () => {
@@ -202,6 +290,13 @@ function PlayWithBot() {
     if (nextPath) navigate(nextPath);
     setShowExitModal(false);
     setNextPath(null);
+  };
+
+  const handleSkillLevelChange = (level) => {
+    setSkillLevel(level);
+    if (selectedBot === 'stockfish' && stockfishRef.current) {
+      stockfishRef.current.postMessage(`setoption name Skill Level value ${level}`);
+    }
   };
 
   return (
@@ -279,8 +374,13 @@ function PlayWithBot() {
           Chess vs Bot
         </h1>
 
+        {stockfishError && (
+          <div className="mb-4 text-rose-200 bg-rose-900/80 p-4 rounded-lg shadow-[0_0_15px_rgba(251,113,133,0.5)]">
+            {stockfishError}
+          </div>
+        )}
+
         <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-0">
-          {/* Left Column: Chessboard */}
           <div className="w-full lg:w-2/3 flex flex-col items-center">
             <div style={{ width: boardWidth, height: boardWidth }}>
               <Chessboard
@@ -297,16 +397,56 @@ function PlayWithBot() {
             </div>
           </div>
 
-          {/* Right Column: Move History, Status, and New Game Button */}
           <div className="w-full lg:w-1/3 flex flex-col gap-4">
             <div
-              style={{ height: boardWidth / 2 - 16 }}
-              className="bg-rose-900/80 rounded-2xl shadow-[0_0_15px_rgba(251,113,133,0.5)] border border-rose-500/50 p-4 overflow-y-auto transition-all duration-300 hover:shadow-[0_0_20px_rgba(251,113,133,0.7)]"
+              style={{ height: boardWidth / 1.3  }}
+              
+              className="bg-rose-900/80 rounded-2xl shadow-[0_0_15px_rgba(251,113,133,0.5)] border border-rose-500/50 p-4 transition-all duration-300 hover:shadow-[0_0_20px_rgba(251,113,133,0.7)]"
             >
+              {/* Select Bot và Bot Level */}
+              <div className="mb-4 flex flex-col gap-2">
+                <div className="flex gap-2 items-center">
+                  <label className="text-rose-200">Select Bot:</label>
+                  <select
+                    value={selectedBot}
+                    onChange={(e) => {
+                      setSelectedBot(e.target.value);
+                      if (e.target.value === 'stockfish' && stockfishRef.current) {
+                        stockfishRef.current.postMessage(`setoption name Skill Level value ${skillLevel}`);
+                      }
+                    }}
+                    className="p-2 border rounded bg-rose-800/80 border-rose-500/50 text-rose-100 placeholder-rose-400/50 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:bg-rose-700/80 transition-all duration-300 shadow-[inset_0_0_8px_rgba(251,113,133,0.3)]"
+                  >
+                    <option value="custom">Custom Bot</option>
+                    <option value="stockfish" disabled={!!stockfishError}>
+                      Stockfish {stockfishError ? "(Unavailable)" : ""}
+                    </option>
+                  </select>
+                </div>
+                {selectedBot === 'stockfish' && !stockfishError && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-rose-200">Bot Level (Elo: {elo})</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      value={skillLevel}
+                      onChange={(e) => handleSkillLevelChange(parseInt(e.target.value))}
+                      className="w-full h-2 bg-rose-800 rounded-lg appearance-none cursor-pointer"
+                      style={{
+                        background: `linear-gradient(to right, #f87171 ${skillLevel * 5}%, #4b5563 ${skillLevel * 5}%)`,
+                      }}
+                    />
+                    <div className="text-rose-200 text-sm">Difficulty: {difficulty}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Move History */}
               <h3 className="text-lg font-semibold text-rose-300 mb-3 drop-shadow-[0_0_8px_rgba(251,113,133,0.5)]">
                 Move History
               </h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 overflow-y-auto" style={{ maxHeight: (boardWidth / 2 - 16) - 120 }}>
                 <div className="text-rose-200 font-semibold">White</div>
                 <div className="text-rose-200 font-semibold">Black</div>
                 {moveHistory.map((move, index) => {
@@ -335,7 +475,6 @@ function PlayWithBot() {
         </div>
       </div>
 
-      {/* Promotion Options Modal */}
       {showPromotionOptions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-rose-900/80 border border-rose-500/50 rounded-2xl shadow-[0_0_20px_rgba(251,113,133,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
@@ -357,7 +496,6 @@ function PlayWithBot() {
         </div>
       )}
 
-      {/* Reset Confirmation Modal */}
       {showResetModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-rose-900/80 border border-rose-500/50 rounded-2xl shadow-[0_0_20px_rgba(251,113,133,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
@@ -385,7 +523,6 @@ function PlayWithBot() {
         </div>
       )}
 
-      {/* Exit Warning Modal */}
       {showExitModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-rose-900/80 border border-rose-500/50 rounded-2xl shadow-[0_0_20px_rgba(251,113,133,0.6)] p-6 max-w-md w-full backdrop-blur-lg">

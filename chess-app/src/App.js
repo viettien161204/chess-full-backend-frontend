@@ -17,6 +17,8 @@ import GameMode from "./pages/GameModes";
 import Leaderboard from "./pages/Leaderboard";
 import Tournaments from "./pages/Tournaments";
 
+
+
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 function App() {
   return (
@@ -52,7 +54,10 @@ function App() {
       </Route>
      
     </Routes>
+
+    
   </BrowserRouter>
+  
   );
 }
 
