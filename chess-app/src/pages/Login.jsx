@@ -14,7 +14,7 @@ const Login = () => {
     try {
       console.log("Sending request to:", '/api/auth/sign-in');
       console.log("Request data:", { email, password });
-      const response = await axios.post('/api/auth/sign-in', {
+      const response = await axios.post('https://api.chessvn.io.vn/api/auth/sign-in', {
         email,
         password,
       }, {

@@ -58,7 +58,7 @@ function PuzzleMode() {
 
     setIsLoadingScore(true);
     try {
-      const response = await fetch("/api/users", {
+      const response = await fetch("https://api.chessvn.io.vn/api/users", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -88,7 +88,7 @@ function PuzzleMode() {
     if (!token || !userId) return;
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`https://api.chessvn.io.vn/api/users/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

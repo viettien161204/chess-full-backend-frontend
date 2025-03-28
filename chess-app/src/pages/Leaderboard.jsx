@@ -19,7 +19,7 @@ function Leaderboard() {
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/users", {
+      const response = await fetch("https://api.chessvn.io.vn/api/users", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

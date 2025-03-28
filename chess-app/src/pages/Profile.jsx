@@ -19,7 +19,7 @@ const Profile = () => {
     // Gọi API để lấy danh sách người dùng
     const fetchUserProfile = async () => {
       try {
-        const response = await axios.get('./api/users', {
+        const response = await axios.get('https://api.chessvn.io.vn/api/users', {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -1,49 +1,75 @@
 package com.btec.Chess.entities;
 
-//public class GameState {
-//
-//    private String gameId;
-//    private String fen; // FEN string representing the chess board state
-//    private String currentPlayer; // "w" for white, "b" for black
-//    private String status; // e.g., "IN_PROGRESS", "WHITE_WINS", "BLACK_WINS", "DRAW"
-//
-//    // Getters and setters
-//    public String getFen() { return fen; }
-//    public void setFen(String fen) { this.fen = fen; }
-//    public String getCurrentPlayer() { return currentPlayer; }
-//    public void setCurrentPlayer(String currentPlayer) { this.currentPlayer = currentPlayer; }
-//    public String getStatus() { return status; }
-//    public void setStatus(String status) { this.status = status; }
-//}
+import com.github.bhlangonijr.chesslib.Board;
+import com.github.bhlangonijr.chesslib.Side;
 
-
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class GameState {
-    private String gameId;
-    private String fen; // Stores the board position in FEN format
+    private String roomId;
+    private User whitePlayer;
+    private User blackPlayer;
+    private Board chessBoard;
     private String currentPlayer;
+    private List<Move> moveHistory;
+    private List<ChatMessage> chatMessages;
+    private String status;
+    private boolean whiteKingCastled;
+    private boolean blackKingCastled;
+    private int[] enPassantTarget;
+    private int halfMoveClock;
+    private int fullMoveNumber;
 
-    public GameState(String gameId) {
-        this.gameId = gameId;
-        this.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; // Standard starting FEN
-        this.currentPlayer = "w"; // White starts
+    public GameState(String roomId, User whitePlayer, User blackPlayer) {
+        this.roomId = roomId;
+        this.whitePlayer = whitePlayer;
+        this.blackPlayer = blackPlayer;
+        this.chessBoard = new Board(); // Khởi tạo bàn cờ với trạng thái ban đầu
+        this.chessBoard.loadFromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"); // Đảm bảo FEN ban đầu
+        this.currentPlayer = "WHITE";
+        this.moveHistory = new ArrayList<>();
+        this.chatMessages = new ArrayList<>();
+        this.status = "IN_PROGRESS";
+        this.whiteKingCastled = false;
+        this.blackKingCastled = false;
+        this.enPassantTarget = null;
+        this.halfMoveClock = 0;
+        this.fullMoveNumber = 1;
     }
 
-    public String getGameId() {
-        return gameId;
+    // Getters và setters
+    public String getRoomId() {
+        return roomId;
     }
 
-    public void setGameId(String gameId) {
-        this.gameId = gameId;
+    public void setRoomId(String roomId) {
+        this.roomId = roomId;
     }
 
-    public String getFen() {
-        return fen;
+    public User getWhitePlayer() {
+        return whitePlayer;
     }
 
-    public void setFen(String fen) {
-        this.fen = fen;
+    public void setWhitePlayer(User whitePlayer) {
+        this.whitePlayer = whitePlayer;
+    }
+
+    public User getBlackPlayer() {
+        return blackPlayer;
+    }
+
+    public void setBlackPlayer(User blackPlayer) {
+        this.blackPlayer = blackPlayer;
+    }
+
+    public Board getChessBoard() {
+        return chessBoard;
+    }
+
+    public void setChessBoard(Board chessBoard) {
+        this.chessBoard = chessBoard;
     }
 
     public String getCurrentPlayer() {
@@ -54,15 +80,105 @@ public class GameState {
         this.currentPlayer = currentPlayer;
     }
 
-    public boolean isValidMove(ChessMove move) {
-        return move.getFrom() != null && move.getTo() != null; // Add proper move validation
+    public List<Move> getMoveHistory() {
+        return moveHistory;
     }
 
-    public void applyMove(ChessMove move) {
-        // Placeholder logic: Update FEN and switch player (use chess library for real moves)
-        this.fen = this.fen;
-        this.currentPlayer = this.currentPlayer.equals("w") ? "b" : "w";
+    public void setMoveHistory(List<Move> moveHistory) {
+        this.moveHistory = moveHistory;
     }
 
-    // Getters and Setters
+    public void addMove(Move move) {
+        this.moveHistory.add(move);
+    }
+
+    public List<ChatMessage> getChatMessages() {
+        return chatMessages;
+    }
+
+    public void setChatMessages(List<ChatMessage> chatMessages) {
+        this.chatMessages = chatMessages;
+    }
+
+    public void addChatMessage(String senderId, String text) {
+        this.chatMessages.add(new ChatMessage(senderId, text));
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public boolean isWhiteKingCastled() {
+        return whiteKingCastled;
+    }
+
+    public void setWhiteKingCastled(boolean whiteKingCastled) {
+        this.whiteKingCastled = whiteKingCastled;
+    }
+
+    public boolean isBlackKingCastled() {
+        return blackKingCastled;
+    }
+
+    public void setBlackKingCastled(boolean blackKingCastled) {
+        this.blackKingCastled = blackKingCastled;
+    }
+
+    public int[] getEnPassantTarget() {
+        return enPassantTarget;
+    }
+
+    public void setEnPassantTarget(int[] enPassantTarget) {
+        this.enPassantTarget = enPassantTarget;
+    }
+
+    public int getHalfMoveClock() {
+        return halfMoveClock;
+    }
+
+    public void setHalfMoveClock(int halfMoveClock) {
+        this.halfMoveClock = halfMoveClock;
+    }
+
+    public int getFullMoveNumber() {
+        return fullMoveNumber;
+    }
+
+    public void setFullMoveNumber(int fullMoveNumber) {
+        this.fullMoveNumber = fullMoveNumber;
+    }
+
+    @Override
+    public String toString() {
+        return "GameState{" +
+                "roomId='" + roomId + '\'' +
+                ", whitePlayer=" + whitePlayer +
+                ", blackPlayer=" + blackPlayer +
+                ", chessBoard=" + chessBoard.getFen() +
+                ", currentPlayer='" + currentPlayer + '\'' +
+                ", moveHistory=" + moveHistory +
+                ", chatMessages=" + chatMessages +
+                ", status='" + status + '\'' +
+                '}';
+    }
+}
+
+class ChatMessage {
+    private String senderId;
+    private String text;
+    private String timestamp;
+
+    public ChatMessage(String senderId, String text) {
+        this.senderId = senderId;
+        this.text = text;
+        this.timestamp = new java.util.Date().toString();
+    }
+
+    public String getSenderId() { return senderId; }
+    public String getText() { return text; }
+    public String getTimestamp() { return timestamp; }
 }

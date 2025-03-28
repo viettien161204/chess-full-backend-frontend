@@ -68,6 +68,7 @@ public class AuthController {
         // Return the token
         Map<String, String> response = new HashMap<>();
         response.put("token", token);
+
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 

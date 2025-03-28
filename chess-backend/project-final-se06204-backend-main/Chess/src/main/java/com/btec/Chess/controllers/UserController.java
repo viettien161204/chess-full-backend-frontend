@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +18,8 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+
+
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody User user) {
         return ResponseEntity.ok(userService.createUser(user));
@@ -26,6 +29,7 @@ public class UserController {
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable String id) {

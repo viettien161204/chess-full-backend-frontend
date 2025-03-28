@@ -20,7 +20,7 @@ const ForgotPassword = () => {
 
     try {
       console.log("Sending POST request to /api/auth/forgot-password with data:", { email });
-      const response = await axios.post('/api/auth/forgot-password', { email }, {
+      const response = await axios.post('https://api.chessvn.io.vn/api/auth/forgot-password', { email }, {
         headers: { 'Content-Type': 'application/json' },
       });
       console.log("Response from backend:", response.data);
@@ -67,7 +67,7 @@ const ForgotPassword = () => {
 
     try {
       console.log("Sending POST request to /api/auth/reset-password with data:", { token, newPassword });
-      const response = await axios.post('/api/auth/reset-password', {
+      const response = await axios.post('https://api.chessvn.io.vn/api/auth/reset-password', {
         token,
         newPassword,
       }, {

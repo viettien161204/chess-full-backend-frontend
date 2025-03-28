@@ -37,7 +37,7 @@ const Register = () => {
       };
       console.log("Sending request to:", '/api/auth/sign-up');
       console.log("Request data:", userData);
-      const response = await axios.post('/api/auth/sign-up', userData, {
+      const response = await axios.post('https://api.chessvn.io.vn/api/auth/sign-up', userData, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -53,7 +53,7 @@ const Register = () => {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-rose-950 to-black">
-      <nav className="bg-rose-900/90 shadow-[0_0_15px_rgba(251,113,133,0.5)] py-3 fixed top-0 left-0 right-0 z-20 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md">
+      <nav className="bg-rose-900/90 shadow-[0_0_15px_rgba(251,113,133,0.5)] py-3  top-0 left-0 right-0 z-20 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md">
         <ul className="flex justify-between items-center list-none px-4 md:px-6">
           <li>
             <Link to="/">
