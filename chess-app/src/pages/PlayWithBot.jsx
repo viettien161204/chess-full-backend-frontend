@@ -11,7 +11,7 @@ function PlayWithBot() {
   const [showPromotionOptions, setShowPromotionOptions] = useState(false);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
-  const [skillLevel, setSkillLevel] = useState(10); // Thay botLevel thành skillLevel (0-20), mặc định là 10
+  const [skillLevel, setSkillLevel] = useState(10);
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [moveHistory, setMoveHistory] = useState([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -20,32 +20,26 @@ function PlayWithBot() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [nextPath, setNextPath] = useState(null);
   const [boardWidth, setBoardWidth] = useState(550);
-  const [selectedBot, setSelectedBot] = useState('stockfish'); // Đặt Stockfish làm mặc định
+  const [selectedBot, setSelectedBot] = useState('stockfish');
   const [stockfishError, setStockfishError] = useState(null);
+  const [lastMove, setLastMove] = useState(null); // Thêm state mới
   const workerRef = useRef(null);
   const stockfishRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Tính Elo và mức độ khó dựa trên skillLevel
   const calculateEloAndDifficulty = (skillLevel) => {
-    const elo = 800 + (skillLevel * 120); // Ánh xạ skillLevel (0-20) thành Elo (800-3200)
+    const elo = 800 + (skillLevel * 120);
     let difficulty = '';
-    if (elo <= 1400) {
-      difficulty = 'Easy';
-    } else if (elo <= 2000) {
-      difficulty = 'Medium';
-    } else if (elo <= 2600) {
-      difficulty = 'Hard';
-    } else {
-      difficulty = 'Expert';
-    }
+    if (elo <= 1400) difficulty = 'Easy';
+    else if (elo <= 2000) difficulty = 'Medium';
+    else if (elo <= 2600) difficulty = 'Hard';
+    else difficulty = 'Expert';
     return { elo, difficulty };
   };
 
   const { elo, difficulty } = calculateEloAndDifficulty(skillLevel);
 
-  // Khởi tạo Stockfish với Web Worker
   useEffect(() => {
     const loadStockfish = async () => {
       try {
@@ -63,6 +57,7 @@ function PlayWithBot() {
                 promotion: bestMove.length > 4 ? bestMove.substring(4, 5) : undefined,
               });
               if (move) {
+                setLastMove({ from: move.from, to: move.to });
                 updateStatusAndHistory(move);
               } else {
                 console.error("Stockfish returned an invalid move:", bestMove);
@@ -84,9 +79,7 @@ function PlayWithBot() {
         stockfish.postMessage('isready');
 
         return () => {
-          if (stockfishRef.current) {
-            stockfishRef.current.terminate();
-          }
+          if (stockfishRef.current) stockfishRef.current.terminate();
         };
       } catch (error) {
         console.error("Error loading Stockfish:", error);
@@ -95,15 +88,15 @@ function PlayWithBot() {
     };
 
     loadStockfish();
-  }, [game]);
+  }, [game, skillLevel]);
 
-  // Khởi tạo worker cho bot của bạn
   useEffect(() => {
     workerRef.current = new Worker(new URL("../botWorker.worker.js", import.meta.url));
     workerRef.current.onmessage = (event) => {
       const bestMove = event.data;
       if (bestMove) {
         game.move(bestMove);
+        setLastMove({ from: bestMove.from, to: bestMove.to });
         updateStatusAndHistory(bestMove);
       } else {
         console.error("Bot failed to return a valid move");
@@ -114,17 +107,12 @@ function PlayWithBot() {
     return () => workerRef.current.terminate();
   }, [game]);
 
-  // Responsive board width
   useEffect(() => {
     const updateBoardWidth = () => {
       const width = window.innerWidth;
-      if (width < 640) {
-        setBoardWidth(Math.min(width - 40, 350));
-      } else if (width < 1024) {
-        setBoardWidth(450);
-      } else {
-        setBoardWidth(550);
-      }
+      if (width < 640) setBoardWidth(Math.min(width - 40, 350));
+      else if (width < 1024) setBoardWidth(450);
+      else setBoardWidth(550);
     };
 
     updateBoardWidth();
@@ -132,7 +120,6 @@ function PlayWithBot() {
     return () => window.removeEventListener("resize", updateBoardWidth);
   }, []);
 
-  // Xử lý navigation và xác nhận thoát
   useEffect(() => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
@@ -150,9 +137,7 @@ function PlayWithBot() {
         event.preventDefault();
         setNextPath(path || event.target.pathname || '/');
         setShowExitModal(true);
-      } else if (path) {
-        navigate(path);
-      }
+      } else if (path) navigate(path);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -167,7 +152,6 @@ function PlayWithBot() {
     };
   }, [moveHistory, game]);
 
-  // Xử lý nước đi của bot
   const makeBotMove = () => {
     setIsBotThinking(true);
     if (selectedBot === 'custom') {
@@ -175,7 +159,7 @@ function PlayWithBot() {
       workerRef.current.postMessage({ fen: game.fen() });
     } else if (stockfishRef.current) {
       stockfishRef.current.postMessage('position fen ' + game.fen());
-      stockfishRef.current.postMessage(`go depth ${Math.floor(skillLevel / 4) + 1}`); // Ánh xạ skillLevel thành depth
+      stockfishRef.current.postMessage(`go depth ${Math.floor(skillLevel / 4) + 1}`);
     } else {
       setIsBotThinking(false);
       setStatus("Stockfish is not available. Please select Custom Bot.");
@@ -187,7 +171,7 @@ function PlayWithBot() {
   }, [game.fen(), selectedBot, skillLevel]);
 
   const onSquareClick = (square) => {
-    if (showPromotionOptions) return;
+    if (showPromotionOptions || isBotThinking || game.turn() === "b") return;
 
     if (selectedSquare) {
       const move = { from: selectedSquare, to: square };
@@ -199,6 +183,7 @@ function PlayWithBot() {
         setShowPromotionOptions(true);
       } else if (foundMove) {
         game.move(move);
+        setLastMove({ from: selectedSquare, to: square });
         updateStatusAndHistory(foundMove);
       }
       setSelectedSquare(null);
@@ -213,6 +198,8 @@ function PlayWithBot() {
   };
 
   const onDrop = (sourceSquare, targetSquare) => {
+    if (isBotThinking || game.turn() === "b") return false;
+
     const possibleMoves = game.moves({ square: sourceSquare, verbose: true });
     const move = possibleMoves.find((m) => m.to === targetSquare);
     if (!move) return false;
@@ -223,6 +210,7 @@ function PlayWithBot() {
       return false;
     }
     game.move({ from: sourceSquare, to: targetSquare });
+    setLastMove({ from: sourceSquare, to: targetSquare });
     updateStatusAndHistory(move);
     return true;
   };
@@ -230,6 +218,7 @@ function PlayWithBot() {
   const promotePawn = (piece) => {
     if (!promotionMove) return;
     game.move({ from: promotionMove.from, to: promotionMove.to, promotion: piece });
+    setLastMove({ from: promotionMove.from, to: promotionMove.to });
     setShowPromotionOptions(false);
     setPromotionMove(null);
     updateStatusAndHistory(game.history({ verbose: true }).slice(-1)[0]);
@@ -260,6 +249,7 @@ function PlayWithBot() {
     setShowPromotionOptions(false);
     setPromotionMove(null);
     setMoveHistory([]);
+    setLastMove(null); // Reset lastMove
     setShowResetModal(false);
     if (selectedBot === 'stockfish' && stockfishRef.current) {
       stockfishRef.current.postMessage('ucinewgame');
@@ -283,6 +273,10 @@ function PlayWithBot() {
     const styles = {};
     validMoves.forEach((square) => styles[square] = { backgroundColor: "rgba(0, 255, 0, 0.4)" });
     if (selectedSquare) styles[selectedSquare] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
+    if (lastMove) {
+      styles[lastMove.from] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
+      styles[lastMove.to] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
+    }
     return styles;
   };
 
@@ -299,6 +293,8 @@ function PlayWithBot() {
     }
   };
 
+
+  
   return (
     <div className="relative overflow-x-hidden min-h-screen font-sans bg-gradient-to-br from-gray-900 via-rose-950 to-black">
       {/* Navbar */}

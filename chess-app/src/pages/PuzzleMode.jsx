@@ -12,6 +12,7 @@ function PuzzleMode() {
   const [nextPath, setNextPath] = useState(null);
   const [score, setScore] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [userData, setUserData] = useState(null); // Thêm state mới
   const [isLoadingScore, setIsLoadingScore] = useState(false);
 
   const [currentPuzzle, setCurrentPuzzle] = useState(null);
@@ -29,6 +30,7 @@ function PuzzleMode() {
   const [arrows, setArrows] = useState([]);
   const [usedHintOrGuide, setUsedHintOrGuide] = useState(false);
   const [boardWidth, setBoardWidth] = useState(550);
+  const [lastMove, setLastMove] = useState(null);
 
   useEffect(() => {
     const updateBoardWidth = () => {
@@ -72,12 +74,14 @@ function PuzzleMode() {
       if (user) {
         setUserId(user.id);
         setScore(user.score || 100);
+        setUserData(user); // Lưu toàn bộ thông tin người dùng
       } else {
         throw new Error("User not found with email: " + userEmail);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
       setScore(null);
+      setUserData(null);
     } finally {
       setIsLoadingScore(false);
     }
@@ -85,19 +89,25 @@ function PuzzleMode() {
 
   const updateUserScore = async (newScore) => {
     const token = localStorage.getItem("token");
-    if (!token || !userId) return;
+    if (!token || !userId || !userData) return;
 
     try {
+      const updatedUserData = {
+        ...userData,
+        score: newScore,
+      };
+
       const response = await fetch(`https://api.chessvn.io.vn/api/users/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ score: newScore }),
+        body: JSON.stringify(updatedUserData),
       });
       if (!response.ok) throw new Error("Failed to update score");
       setScore(newScore);
+      setUserData(updatedUserData); // Cập nhật lại state
     } catch (error) {
       console.error("Error updating score:", error);
     }
@@ -132,6 +142,7 @@ function PuzzleMode() {
           const opponentFirstMove = moves[0];
           try {
             chess.move({ from: opponentFirstMove.slice(0, 2), to: opponentFirstMove.slice(2, 4) });
+            setLastMove({ from: opponentFirstMove.slice(0, 2), to: opponentFirstMove.slice(2, 4) });
           } catch (error) {
             console.error("Invalid first move:", error);
             validPuzzle = false;
@@ -222,6 +233,7 @@ function PuzzleMode() {
     if (!game || !currentPuzzle || isPuzzleSolved) return;
 
     game.move(move);
+    setLastMove({ from: move.from, to: move.to });
     setMoveHistory((prev) => [...prev, { move: sanMove, player: "Player" }]);
     setMoveCount((prev) => prev + 1);
 
@@ -254,6 +266,7 @@ function PuzzleMode() {
 
         setTimeout(() => {
           game.move({ from: opponentMove.slice(0, 2), to: opponentMove.slice(2, 4) });
+          setLastMove({ from: opponentMove.slice(0, 2), to: opponentMove.slice(2, 4) });
           setMoveHistory((prev) => [...prev, { move: opponentMove, player: "Opponent" }]);
           if (game.isCheckmate()) {
             setStatus("Congratulations! You solved the puzzle!");
@@ -275,6 +288,7 @@ function PuzzleMode() {
       game.undo();
       setMoveHistory((prev) => prev.slice(0, -1));
       setMoveCount((prev) => prev - 1);
+      setLastMove(null);
     }
   };
 
@@ -287,6 +301,7 @@ function PuzzleMode() {
       const foundMove = possibleMoves.find((m) => m.to === square);
 
       if (foundMove) {
+        setLastMove({ from: selectedSquare, to: square });
         handleMove(foundMove, foundMove.san);
       }
       setSelectedSquare(null);
@@ -309,6 +324,7 @@ function PuzzleMode() {
 
     if (!move) return false;
 
+    setLastMove({ from: sourceSquare, to: targetSquare });
     handleMove(move, move.san);
     setArrows([]);
     return true;
@@ -327,6 +343,10 @@ function PuzzleMode() {
     });
     if (selectedSquare) {
       styles[selectedSquare] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
+    }
+    if (lastMove) {
+      styles[lastMove.from] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
+      styles[lastMove.to] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
     }
     return styles;
   };
@@ -347,6 +367,7 @@ function PuzzleMode() {
     setShowMoveGuide(false);
     setArrows([]);
     setUsedHintOrGuide(false);
+    setLastMove(null);
   };
 
   const resetPuzzle = () => {
@@ -356,6 +377,7 @@ function PuzzleMode() {
     const opponentFirstMove = currentPuzzle.solution[0];
     try {
       chess.move({ from: opponentFirstMove.slice(0, 2), to: opponentFirstMove.slice(2, 4) });
+      setLastMove({ from: opponentFirstMove.slice(0, 2), to: opponentFirstMove.slice(2, 4) });
     } catch (error) {
       console.error("Cannot apply first move:", error);
       setStatus("Error resetting puzzle. Please try a new puzzle.");
@@ -386,6 +408,7 @@ function PuzzleMode() {
     setIsLoggedIn(false);
     setScore(null);
     setUserId(null);
+    setUserData(null); // Reset userData
     setDropdownOpen(false);
     navigate("/login");
   };
@@ -416,7 +439,7 @@ function PuzzleMode() {
 
     return (
       <div
-        style={{ height: boardWidth / 2 - 16 }} // 16px for padding (p-4)
+        style={{ height: boardWidth / 2 - 16 }}
         className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] rounded-2xl shadow-[0_0_15px_rgba(192,192,192,0.5)] border border-[#C0C0C0] p-4 overflow-y-auto transition-all duration-300 hover:shadow-[0_0_20px_rgba(192,192,192,0.7)]"
       >
         <div className="flex justify-between items-center mb-3">
@@ -551,7 +574,6 @@ function PuzzleMode() {
           </div>
         ) : game ? (
           <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-0">
-            {/* Left Column: Chessboard */}
             <div className="w-full lg:w-2/3 flex flex-col items-center">
               <div style={{ width: boardWidth, height: boardWidth }}>
                 <Chessboard
@@ -569,10 +591,9 @@ function PuzzleMode() {
               </div>
             </div>
 
-            {/* Right Column: Move History, Step-by-Step Guide, and Buttons */}
             <div className="w-full lg:w-1/3 flex flex-col gap-4">
               <div
-                style={{ height: boardWidth / 2 - 16 }} // 16px for padding (p-4)
+                style={{ height: boardWidth / 2 - 16 }}
                 className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] rounded-2xl shadow-[0_0_15px_rgba(192,192,192,0.5)] border border-[#C0C0C0] p-4 overflow-y-auto transition-all duration-300 hover:shadow-[0_0_20px_rgba(192,192,192,0.7)]"
               >
                 <h3 className="text-lg font-semibold text-[#E5E4E2] mb-3 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">

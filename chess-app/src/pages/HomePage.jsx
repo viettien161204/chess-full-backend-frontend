@@ -491,7 +491,7 @@ const HomePage = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/chess" className="flex items-center text-blue-300/80 hover:text-blue-200 transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
+                  <Link to="/gamemode" className="flex items-center text-blue-300/80 hover:text-blue-200 transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
                     <span className="mr-3">♟️</span> Play Now
                   </Link>
                 </li>

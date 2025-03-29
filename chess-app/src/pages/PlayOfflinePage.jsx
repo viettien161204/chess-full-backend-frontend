@@ -19,6 +19,7 @@ function PlayOfflinePage() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [nextPath, setNextPath] = useState(null);
   const [boardWidth, setBoardWidth] = useState(550);
+  const [lastMove, setLastMove] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -95,18 +96,19 @@ function PlayOfflinePage() {
 
   const onSquareClick = (square) => {
     if (showPromotionOptions) return;
-
+  
     if (selectedSquare) {
       const move = { from: selectedSquare, to: square };
       const possibleMoves = game.moves({ square: selectedSquare, verbose: true });
       const foundMove = possibleMoves.find(m => m.to === square);
-
+  
       if (foundMove && foundMove.promotion) {
         setPromotionMove(move);
         setShowPromotionOptions(true);
       } else if (foundMove) {
         game.move(move);
         setGamePosition(game.fen());
+        setLastMove({ from: selectedSquare, to: square }); // Cập nhật nước đi cuối
         updateStatusAndHistory(foundMove);
       }
       setSelectedSquare(null);
@@ -132,6 +134,7 @@ function PlayOfflinePage() {
     }
     game.move({ from: sourceSquare, to: targetSquare });
     setGamePosition(game.fen());
+    setLastMove({ from: sourceSquare, to: targetSquare }); // Cập nhật nước đi cuối
     updateStatusAndHistory(move);
     return true;
   };
@@ -139,6 +142,7 @@ function PlayOfflinePage() {
   const promotePawn = (piece) => {
     if (!promotionMove) return;
     game.move({ from: promotionMove.from, to: promotionMove.to, promotion: piece });
+    setLastMove({ from: promotionMove.from, to: promotionMove.to }); // Cập nhật nước đi cuối
     setShowPromotionOptions(false);
     setPromotionMove(null);
     setGamePosition(game.fen());
@@ -177,6 +181,10 @@ function PlayOfflinePage() {
     const styles = {};
     validMoves.forEach(square => styles[square] = { backgroundColor: "rgba(0, 255, 0, 0.4)" });
     if (selectedSquare) styles[selectedSquare] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
+    if (lastMove) {
+      styles[lastMove.from] = { backgroundColor: "rgba(0, 255, 0, 0.6)" }; // Bôi xanh vị trí trước đó
+      styles[lastMove.to] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };   // Bôi xanh vị trí hiện tại
+    }
     return styles;
   };
 

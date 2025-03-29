@@ -13,6 +13,7 @@ function DailyChallenge() {
   const [nextPath, setNextPath] = useState(null);
   const [score, setScore] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [userData, setUserData] = useState(null); // Thêm state mới
   const [isLoadingScore, setIsLoadingScore] = useState(false);
 
   const [currentPuzzle, setCurrentPuzzle] = useState(null);
@@ -28,18 +29,14 @@ function DailyChallenge() {
   const [arrows, setArrows] = useState([]);
   const [hasSolvedToday, setHasSolvedToday] = useState(false);
   const [boardWidth, setBoardWidth] = useState(550);
+  const [lastMove, setLastMove] = useState(null);
 
-  // Responsive board width
   useEffect(() => {
     const updateBoardWidth = () => {
       const width = window.innerWidth;
-      if (width < 640) {
-        setBoardWidth(Math.min(width - 40, 350));
-      } else if (width < 1024) {
-        setBoardWidth(450);
-      } else {
-        setBoardWidth(550);
-      }
+      if (width < 640) setBoardWidth(Math.min(width - 40, 350));
+      else if (width < 1024) setBoardWidth(450);
+      else setBoardWidth(550);
     };
 
     updateBoardWidth();
@@ -47,7 +44,6 @@ function DailyChallenge() {
     return () => window.removeEventListener("resize", updateBoardWidth);
   }, []);
 
-  // Fetch user data from backend
   const fetchUserData = async () => {
     const token = localStorage.getItem("token");
     const userEmail = localStorage.getItem("userEmail");
@@ -64,47 +60,51 @@ function DailyChallenge() {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const users = await response.json();
       const user = users.find((u) => u.email === userEmail);
       if (user) {
         setUserId(user.id);
         setScore(user.score || 100);
+        setUserData(user);
       } else {
         throw new Error("User not found with email: " + userEmail);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
       setScore(null);
+      setUserData(null);
     } finally {
       setIsLoadingScore(false);
     }
   };
 
-  // Update user score to backend
   const updateUserScore = async (newScore) => {
     const token = localStorage.getItem("token");
-    if (!token || !userId) return;
+    if (!token || !userId || !userData) return;
 
     try {
+      const updatedUserData = {
+        ...userData,
+        score: newScore,
+      };
+
       const response = await fetch(`https://api.chessvn.io.vn/api/users/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ score: newScore }),
+        body: JSON.stringify(updatedUserData),
       });
       if (!response.ok) throw new Error("Failed to update score");
       setScore(newScore);
+      setUserData(updatedUserData);
     } catch (error) {
       console.error("Error updating score:", error);
     }
   };
 
-  // Convert UCI move (e2e4) to object { from: 'e2', to: 'e4' }
   const uciToMoveObject = (uciMove) => {
     if (typeof uciMove !== "string" || uciMove.length < 4) {
       throw new Error(`Invalid UCI move: ${uciMove}`);
@@ -115,20 +115,17 @@ function DailyChallenge() {
     };
   };
 
-  // Check if the player has solved today's puzzle (based on email)
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0]; // Get current date (YYYY-MM-DD)
+    const today = new Date().toISOString().split("T")[0];
     const userEmail = localStorage.getItem("userEmail");
     const dailyChallengeData = JSON.parse(localStorage.getItem("dailyChallenge")) || {};
 
-    // If no userEmail (not logged in), prevent playing
     if (!userEmail) {
       setStatus("Please log in to play the Daily Challenge.");
       setIsLoading(false);
       return;
     }
 
-    // Check status based on the user's email
     const userChallengeData = dailyChallengeData[userEmail] || {};
 
     if (userChallengeData.date === today) {
@@ -137,7 +134,6 @@ function DailyChallenge() {
         setIsLoading(false);
       }
       if (userChallengeData.puzzle) {
-        // If there's a puzzle for today, reuse it
         const { puzzle, fen, playerColor } = userChallengeData;
         const chess = new Chess(fen);
         setCurrentPuzzle(puzzle);
@@ -152,11 +148,9 @@ function DailyChallenge() {
         return;
       }
     }
-    // If no puzzle or different date, fetch a new puzzle
     fetchDailyPuzzle();
   }, []);
 
-  // Fetch puzzle from Hugging Face API and check for checkmate
   const fetchDailyPuzzle = async (offset = Math.floor(Math.random() * 3300000)) => {
     setIsLoading(true);
     let validPuzzle = false;
@@ -170,70 +164,58 @@ function DailyChallenge() {
     }
 
     try {
-      // Call API from Hugging Face
       const response = await axios.get(
         `https://datasets-server.huggingface.co/rows?dataset=Lichess/chess-puzzles&config=default&split=train&offset=${offset}&length=1`
       );
       const data = response.data;
 
-      // Check if data and data.rows exist
       if (!data || !data.rows || data.rows.length === 0) {
         throw new Error("Invalid data from API: Missing 'rows' field");
       }
 
       const puzzleData = data.rows[0].row;
 
-      // Check difficulty (rating between 1500-2200)
       if (!puzzleData.Rating || puzzleData.Rating < 1500 || puzzleData.Rating > 2200) {
         return fetchDailyPuzzle(Math.floor(Math.random() * 3300000));
       }
 
-      // Check valid FEN
       const fen = puzzleData.FEN;
-      if (!fen) {
-        throw new Error("Invalid data from API: Missing 'FEN' field");
-      }
+      if (!fen) throw new Error("Invalid data from API: Missing 'FEN' field");
       const fenFields = fen.split(" ");
-      if (fenFields.length !== 6) {
-        throw new Error("Invalid FEN: must contain six space-delimited fields");
-      }
+      if (fenFields.length !== 6) throw new Error("Invalid FEN: must contain six space-delimited fields");
 
-      // Convert Moves from string to array
       const moves = puzzleData.Moves ? puzzleData.Moves.split(" ") : [];
-      if (moves.length === 0) {
-        throw new Error("Invalid data from API: Missing 'Moves' field");
-      }
+      if (moves.length === 0) throw new Error("Invalid data from API: Missing 'Moves' field");
 
-      // Simulate moves to check for checkmate
       chess = new Chess(fen);
       let isDraw = false;
       for (let i = 0; i < moves.length; i++) {
         const move = uciToMoveObject(moves[i]);
         chess.move(move);
-
-        // Check for draw conditions
-        if (chess.isDraw() || chess.isStalemate() || chess.isInsufficientMaterial() || chess.isThreefoldRepetition()) {
+        if (
+          chess.isDraw() ||
+          chess.isStalemate() ||
+          chess.isInsufficientMaterial() ||
+          chess.isThreefoldRepetition()
+        ) {
           isDraw = true;
           break;
         }
       }
 
-      // If it doesn't lead to checkmate or there's a draw, fetch a new puzzle
       if (!chess.isCheckmate() || isDraw) {
         return fetchDailyPuzzle(Math.floor(Math.random() * 3300000));
       }
 
-      // Reset the board for the player
       chess = new Chess(fen);
 
-      // Perform the opponent's first move (if any)
       if (moves.length > 0) {
         const firstMove = uciToMoveObject(moves[0]);
         chess.move(firstMove);
+        setLastMove({ from: firstMove.from, to: firstMove.to });
       }
 
-      // Separate player and opponent moves
-      const playerMoves = moves.slice(1).filter((_, i) => i % 2 === 0); // Start from the second move
+      const playerMoves = moves.slice(1).filter((_, i) => i % 2 === 0);
       const opponentMoves = moves.slice(1).filter((_, i) => i % 2 !== 0);
 
       puzzle = {
@@ -246,7 +228,7 @@ function DailyChallenge() {
         solution: moves,
         opponentMoves,
         playerMoves,
-        themes: puzzleData.Themes, // Store additional theme info
+        themes: puzzleData.Themes,
       };
 
       validPuzzle = true;
@@ -268,7 +250,6 @@ function DailyChallenge() {
       );
       setIsLoading(false);
 
-      // Save puzzle to localStorage based on email
       const today = new Date().toISOString().split("T")[0];
       const dailyChallengeData = JSON.parse(localStorage.getItem("dailyChallenge")) || {};
       dailyChallengeData[userEmail] = {
@@ -282,11 +263,11 @@ function DailyChallenge() {
     }
   };
 
-  // Handle when the user tries to leave the page
   useEffect(() => {
     const handleBeforeUnload = (event) => {
       if (moveHistory.length > 0 && !hasSolvedToday) {
-        event.returnValue = "Are you sure you want to leave this page? All puzzle progress will be lost.";
+        event.returnValue =
+          "Are you sure you want to leave this page? All puzzle progress will be lost.";
         return event.returnValue;
       }
     };
@@ -316,18 +297,17 @@ function DailyChallenge() {
     };
   }, [moveHistory, navigate, hasSolvedToday]);
 
-  // Get opponent's move
   const getOpponentMove = () => {
     const possibleMoves = game.moves({ verbose: true });
     if (possibleMoves.length === 0) return null;
     return possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
   };
 
-  // Handle player's move
   const handleMove = (move, sanMove) => {
     if (!game || !currentPuzzle || isPuzzleSolved) return;
 
     game.move(move);
+    setLastMove({ from: move.from, to: move.to });
     setMoveHistory((prev) => [...prev, { move: sanMove, player: "Player" }]);
     setMoveCount((prev) => prev + 1);
 
@@ -335,7 +315,7 @@ function DailyChallenge() {
     const correctMove = currentPuzzle.playerMoves[currentPlayerMoveIndex];
     const remainingMoves = currentPuzzle.maxMoves - currentPlayerMoveIndex - 1;
 
-    const moveUCI = move.from + move.to; // Convert player's move to UCI format for comparison
+    const moveUCI = move.from + move.to;
     if (moveUCI === correctMove) {
       if (game.isCheckmate()) {
         setStatus("Congratulations! You solved the puzzle!");
@@ -345,7 +325,6 @@ function DailyChallenge() {
           const newScore = (score || 100) + points;
           updateUserScore(newScore);
         }
-        // Save solved status for today based on email
         const today = new Date().toISOString().split("T")[0];
         const userEmail = localStorage.getItem("userEmail");
         const dailyChallengeData = JSON.parse(localStorage.getItem("dailyChallenge")) || {};
@@ -373,7 +352,6 @@ function DailyChallenge() {
               const newScore = (score || 100) + points;
               updateUserScore(newScore);
             }
-            // Save solved status for today based on email
             const today = new Date().toISOString().split("T")[0];
             const userEmail = localStorage.getItem("userEmail");
             const dailyChallengeData = JSON.parse(localStorage.getItem("dailyChallenge")) || {};
@@ -393,6 +371,7 @@ function DailyChallenge() {
         setTimeout(() => {
           const opponentMoveObj = uciToMoveObject(opponentMove);
           game.move(opponentMoveObj);
+          setLastMove({ from: opponentMoveObj.from, to: opponentMoveObj.to });
           setMoveHistory((prev) => [...prev, { move: opponentMove, player: "Opponent" }]);
           if (game.isCheckmate()) {
             setStatus("Congratulations! You solved the puzzle!");
@@ -402,7 +381,6 @@ function DailyChallenge() {
               const newScore = (score || 100) + points;
               updateUserScore(newScore);
             }
-            // Save solved status for today based on email
             const today = new Date().toISOString().split("T")[0];
             const userEmail = localStorage.getItem("userEmail");
             const dailyChallengeData = JSON.parse(localStorage.getItem("dailyChallenge")) || {};
@@ -425,12 +403,12 @@ function DailyChallenge() {
     } else {
       setStatus("Wrong move! Try again.");
       game.undo();
+      setLastMove(null);
       setMoveHistory((prev) => prev.slice(0, -1));
       setMoveCount((prev) => prev - 1);
     }
   };
 
-  // Handle square click on the board
   const onSquareClick = (square) => {
     if (isPuzzleSolved || !game || hasSolvedToday) return;
 
@@ -440,6 +418,7 @@ function DailyChallenge() {
       const foundMove = possibleMoves.find((m) => m.to === square);
 
       if (foundMove) {
+        setLastMove({ from: selectedSquare, to: square });
         handleMove(foundMove, foundMove.san);
       }
       setSelectedSquare(null);
@@ -454,7 +433,6 @@ function DailyChallenge() {
     }
   };
 
-  // Handle piece drop on the board
   const onDrop = (sourceSquare, targetSquare) => {
     if (isPuzzleSolved || !game || hasSolvedToday) return false;
 
@@ -463,19 +441,18 @@ function DailyChallenge() {
 
     if (!move) return false;
 
+    setLastMove({ from: sourceSquare, to: targetSquare });
     handleMove(move, move.san);
     setArrows([]);
     return true;
   };
 
-  // Handle right-click to draw arrows
   const onSquareRightClick = (square) => {
     if (selectedSquare) {
       setArrows([[selectedSquare, square]]);
     }
   };
 
-  // Customize square styles on the board
   const customSquareStyles = () => {
     const styles = {};
     validMoves.forEach((square) => {
@@ -484,27 +461,29 @@ function DailyChallenge() {
     if (selectedSquare) {
       styles[selectedSquare] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
     }
+    if (lastMove) {
+      styles[lastMove.from] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
+      styles[lastMove.to] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
+    }
     return styles;
   };
 
-  // Handle logout
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userEmail");
     setIsLoggedIn(false);
     setScore(null);
     setUserId(null);
+    setUserData(null); // Reset userData
     setDropdownOpen(false);
     navigate("/login");
   };
 
-  // Handle view profile
   const handleViewProfile = () => {
     navigate("/profile");
     setDropdownOpen(false);
   };
 
-  // Confirm exit
   const confirmExit = () => {
     if (nextPath) {
       navigate(nextPath);
@@ -513,14 +492,12 @@ function DailyChallenge() {
     setNextPath(null);
   };
 
-  // Initialize data when the page loads
   useEffect(() => {
     fetchUserData();
   }, []);
 
   return (
     <div className="relative overflow-x-hidden min-h-screen font-sans bg-gradient-to-br from-[#1C2526] to-[#000000]">
-      {/* Navbar */}
       <nav className="bg-gradient-to-r from-[#2E2E2E] to-[#1C2526] shadow-[0_0_15px_rgba(192,192,192,0.5)] py-3 z-50 rounded-b-xl max-w-7xl mx-auto mt-2 backdrop-blur-md transition-colors duration-500 ease-in-out">
         <ul className="flex justify-between items-center list-none px-4 md:px-6">
           <li>
@@ -587,7 +564,6 @@ function DailyChallenge() {
         </ul>
       </nav>
 
-      {/* Main Content */}
       <div className="flex flex-col items-center min-h-screen p-4">
         <h1 className="text-5xl font-bold text-[#E5E4E2] mb-6 drop-shadow-[0_0_10px_rgba(192,192,192,0.7)]">
           Daily Challenge
@@ -626,9 +602,7 @@ function DailyChallenge() {
             <h2 className="text-3xl font-semibold text-[#E5E4E2] mb-4 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
               You have completed today's challenge!
             </h2>
-            <p className="text-[#D3D3D3] mb-6">
-              Come back tomorrow for a new challenge.
-            </p>
+            <p className="text-[#D3D3D3] mb-6">Come back tomorrow for a new challenge.</p>
             <Link to="/">
               <button className="px-6 py-3 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300 font-semibold text-lg">
                 Back to Home
@@ -637,7 +611,6 @@ function DailyChallenge() {
           </div>
         ) : game ? (
           <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-0">
-            {/* Left Column: Chessboard */}
             <div className="w-full lg:w-2/3 flex flex-col items-center">
               <div style={{ width: boardWidth, height: boardWidth }}>
                 <Chessboard
@@ -655,7 +628,6 @@ function DailyChallenge() {
               </div>
             </div>
 
-            {/* Right Column: Move History, Themes, and Status */}
             <div className="w-full lg:w-1/3 flex flex-col gap-4">
               <div
                 style={{ height: boardWidth / 2 - 16 }}
@@ -681,52 +653,57 @@ function DailyChallenge() {
             </div>
           </div>
         ) : (
-          <p className="text-[#D3D3D3]">Unable to load chessboard.</p>
-        )}
-      </div>
-
-      {/* Exit Warning Modal */}
-      {showExitModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] border border-[#C0C0C0] rounded-2xl shadow-[0_0_20px_rgba(192,192,192,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => setShowExitModal(false)}
-                className="text-[#C0C0C0] hover:text-[#E5E4E2] transition-colors duration-300"
-              >
-                ×
-              </button>
-            </div>
-            <h2 className="text-2xl font-bold text-[#E5E4E2] mb-4 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
-              Warning
-            </h2>
-            <p className="text-[#D3D3D3] mb-6">
-              Are you sure you want to leave this page? All puzzle progress will be lost.
-            </p>
+          <div className="flex flex-col items-center text-[#D3D3D3]">
+            <p>Unable to load chessboard.</p>
             <button
-              onClick={confirmExit}
-              className="bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
+              onClick={() => fetchDailyPuzzle()}
+              className="mt-4 px-4 py-2 bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
             >
-              OK
+              Reload
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-     
+        {showExitModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-gradient-to-br from-[#2E2E2E] to-[#1C2526] border border-[#C0C0C0] rounded-2xl shadow-[0_0_20px_rgba(192,192,192,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setShowExitModal(false)}
+                  className="text-[#C0C0C0] hover:text-[#E5E4E2] transition-colors duration-300"
+                >
+                  ×
+                </button>
+              </div>
+              <h2 className="text-2xl font-bold text-[#E5E4E2] mb-4 drop-shadow-[0_0_8px_rgba(192,192,192,0.5)]">
+                Warning
+              </h2>
+              <p className="text-[#D3D3D3] mb-6">
+                Are you sure you want to leave this page? All puzzle progress will be lost.
+              </p>
+              <button
+                onClick={confirmExit}
+                className="bg-gradient-to-r from-[#C0C0C0] to-[#A9A9A9] text-[#1C2526] py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(192,192,192,0.7)] hover:from-[#D3D3D3] hover:to-[#C0C0C0] hover:scale-105 hover:shadow-[0_0_25px_rgba(192,192,192,0.9)] transition-all duration-300"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
 
-      <style>
-        {`
-          @keyframes spin {
-            0% {
-              transform: rotate(0deg);
+        <style>
+          {`
+            @keyframes spin {
+              0% {
+                transform: rotate(0deg);
+              }
+              100% {
+                transform: rotate(360deg);
+              }
             }
-            100% {
-              transform: rotate(360deg);
-            }
-          }
-        `}
-      </style>
+          `}
+        </style>
+      </div>
     </div>
   );
 }

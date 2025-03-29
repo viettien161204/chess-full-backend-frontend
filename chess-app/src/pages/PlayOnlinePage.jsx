@@ -31,6 +31,7 @@ const PlayOnlinePage = () => {
   const [gameResult, setGameResult] = useState("");
   const [chess, setChess] = useState(new Chess());
   const [activeTab, setActiveTab] = useState("moveHistory");
+  const [lastMove, setLastMove] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -140,7 +141,6 @@ const PlayOnlinePage = () => {
     }
   }, [gameState]);
 
-  // Lấy điểm số của người chơi từ API
   useEffect(() => {
     const fetchPlayerScores = async () => {
       if (gameState?.whitePlayer?.email && gameState?.blackPlayer?.email) {
@@ -174,7 +174,6 @@ const PlayOnlinePage = () => {
     const email = parseJwt(token).sub;
     console.log("Current user email:", email);
 
-    // Xác định myColor
     if (newGameState.whitePlayer && newGameState.whitePlayer.email === email) {
       setMyColor("WHITE");
       console.log("Set myColor to WHITE");
@@ -198,16 +197,24 @@ const PlayOnlinePage = () => {
     }
 
     console.log("Move history data:", newGameState.moveHistory);
-    setMoveHistory(
-      newGameState.moveHistory
-        ? newGameState.moveHistory.map((move) => ({
-            move: `${move.fromRow}${move.fromCol}-${move.toRow}${move.toCol}${move.promotion ? ` (${move.promotion})` : ""}`,
-            player: move.player === "WHITE" ? player1 : player2,
-          }))
-        : []
-    );
+    const updatedMoveHistory = newGameState.moveHistory
+      ? newGameState.moveHistory.map((move) => ({
+          move: `${move.fromRow}${move.fromCol}-${move.toRow}${move.toCol}${move.promotion ? ` (${move.promotion})` : ""}`,
+          player: move.player === "WHITE" ? player1 : player2,
+        }))
+      : [];
+    setMoveHistory(updatedMoveHistory);
 
-    // Cập nhật messages với firstName và lastName
+    if (newGameState.moveHistory && newGameState.moveHistory.length > 0) {
+      const lastMoveData = newGameState.moveHistory[newGameState.moveHistory.length - 1];
+      const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+      const fromSquare = `${files[lastMoveData.fromCol]}${8 - lastMoveData.fromRow}`;
+      const toSquare = `${files[lastMoveData.toCol]}${8 - lastMoveData.toRow}`;
+      setLastMove({ from: fromSquare, to: toSquare });
+    } else {
+      setLastMove(null);
+    }
+
     setMessages(
       newGameState.chatMessages
         ? newGameState.chatMessages.map((msg) => {
@@ -317,6 +324,7 @@ const PlayOnlinePage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setShowGameEndModal(false);
+      setLastMove(null);
     }, 500);
 
     setTimeout(() => {
@@ -325,6 +333,7 @@ const PlayOnlinePage = () => {
   };
 
   const leaveRoom = () => {
+    setLastMove(null);
     window.location.reload();
   };
 
@@ -454,6 +463,10 @@ const PlayOnlinePage = () => {
     console.log("Applying customSquareStyles with validMoves:", validMoves);
     validMoves.forEach((square) => (styles[square] = { backgroundColor: "rgba(0, 255, 0, 0.4)" }));
     if (selectedSquare) styles[selectedSquare] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
+    if (lastMove) {
+      styles[lastMove.from] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
+      styles[lastMove.to] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
+    }
     return styles;
   };
 
@@ -464,7 +477,6 @@ const PlayOnlinePage = () => {
     return `${fromSquare}-${toSquare}`;
   };
 
-  // Cập nhật boardOrientation khi myColor thay đổi
   const [boardOrientation, setBoardOrientation] = useState("white");
   useEffect(() => {
     setBoardOrientation(myColor === "WHITE" ? "white" : "black");
@@ -528,9 +540,7 @@ const PlayOnlinePage = () => {
         </h1>
 
         <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-4">
-          {/* Bàn cờ và thông tin người chơi */}
           <div className="w-full lg:w-2/3 flex flex-col items-center">
-            {/* Người chơi trên bàn cờ (Đen nếu boardOrientation là white, Trắng nếu boardOrientation là black) */}
             <div className="w-full text-center mb-2" style={{ width: boardWidth }}>
               <div className="bg-fuchsia-900/80 border border-fuchsia-500/50 rounded-lg p-2 shadow-[0_0_10px_rgba(217,70,239,0.5)]">
                 <p className="text-fuchsia-200 text-lg">
@@ -557,7 +567,6 @@ const PlayOnlinePage = () => {
               />
             </div>
 
-            {/* Người chơi dưới bàn cờ (Trắng nếu boardOrientation là white, Đen nếu boardOrientation là black) */}
             <div className="w-full text-center mt-2" style={{ width: boardWidth }}>
               <div className="bg-fuchsia-900/80 border border-fuchsia-500/50 rounded-lg p-2 shadow-[0_0_10px_rgba(217,70,239,0.5)]">
                 <p className="text-fuchsia-200 text-lg">
@@ -573,13 +582,11 @@ const PlayOnlinePage = () => {
             </div>
           </div>
 
-          {/* Tabs cho Move History, Chat, Join or Create Room */}
           <div className="w-full lg:w-1/3 flex flex-col gap-2">
             <div
               className="bg-fuchsia-900/80 rounded-2xl shadow-[0_0_15px_rgba(217,70,239,0.5)] border border-fuchsia-500/50 p-4"
               style={{ height: boardWidth }}
             >
-              {/* Tab navigation */}
               <div className="flex border-b border-fuchsia-500/50 mb-4">
                 <button
                   onClick={() => setActiveTab("moveHistory")}
@@ -607,7 +614,6 @@ const PlayOnlinePage = () => {
                 </button>
               </div>
 
-              {/* Tab content */}
               {activeTab === "moveHistory" && (
                 <div className="text-fuchsia-200 text-sm overflow-y-auto" style={{ height: boardWidth - 100 }}>
                   <div className="grid grid-cols-3 gap-2 font-semibold mb-2">
