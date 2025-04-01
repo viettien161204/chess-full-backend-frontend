@@ -85,24 +85,8 @@ Start the game and challenge the AI.
 
 **Project Structure**
 
-ChessVN/
-├── frontend/               # ReactJS source code
-│   ├── src/                # Source code
-│   │   ├── PlayOfflinePage.js   # Offline play component
-│   │   ├── HomePage.js          # Home page
-│   │   ├── PlayOnlinePage.js    # Online play component
-│   │   ├── PlayWithBot.js       # Bot play component
-│   │   └── 1.png                # Logo
-│   └── public/
-│       └── stockfish/      # Stockfish files
-├── backend/                # Spring Boot source code
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/
-│   │   │   └── resources/
-│   │   │       └── application.properties
-│   └── pom.xml
-└── README.md
+![image](https://github.com/user-attachments/assets/8ed0ae25-a50c-47dd-816c-fe786913e216)
+
 
 
 
