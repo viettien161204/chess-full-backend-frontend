@@ -67,6 +67,9 @@ The frontend will run on http://localhost:3000.
 Ensure the stockfish.js file is placed in the frontend/public/stockfish directory.
 If missing, download it from Stockfish GitHub and add it.
 Usage
+
+
+
 - Home Page (/)
 Choose a game mode: Offline, Online, or Bot.
 Register/Login if you want to play online.
@@ -78,3 +81,42 @@ Use the chat and track move history during the match.
 - Play with Bot (/chessbot)
 Select bot type (Custom or Stockfish) and difficulty level (Elo from 800 to 3200).
 Start the game and challenge the AI.
+
+
+**Project Structure**
+
+ChessVN/
+├── frontend/               # ReactJS source code
+│   ├── src/                # Source code
+│   │   ├── PlayOfflinePage.js   # Offline play component
+│   │   ├── HomePage.js          # Home page
+│   │   ├── PlayOnlinePage.js    # Online play component
+│   │   ├── PlayWithBot.js       # Bot play component
+│   │   └── 1.png                # Logo
+│   └── public/
+│       └── stockfish/      # Stockfish files
+├── backend/                # Spring Boot source code
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   └── resources/
+│   │   │       └── application.properties
+│   └── pom.xml
+└── README.md
+
+
+
+**Contributing**
+1. Fork this repository.
+2. Create a new branch (git checkout -b feature/your-feature).
+3. Commit your changes (git commit -m "Add your feature").
+4. Push to the branch (git push origin feature/your-feature).
+5. Create a Pull Request.
+
+   
+**License**
+This project is licensed under the .
+
+Contact
+Email: nguyenviettien161204@gmail.com
+Phone: 0356566213
