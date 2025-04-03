@@ -17,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class ChessWebSocketController {
@@ -46,6 +47,9 @@ public class ChessWebSocketController {
             return;
         }
 
+        // Rời phòng cũ nếu có
+        leavePreviousRoom(email);
+
         if (gameSessions.containsKey(roomId)) {
             System.out.println("Room already exists: " + roomId);
             return;
@@ -58,6 +62,7 @@ public class ChessWebSocketController {
         System.out.println("Sending GameState after create: " + gameState);
         try {
             messagingTemplate.convertAndSend("/topic/game/" + roomId, gameState);
+            sendRoomUpdate(); // Cập nhật danh sách phòng
             System.out.println("GameState sent successfully to /topic/game/" + roomId);
         } catch (Exception e) {
             System.err.println("Error sending GameState: " + e.getMessage());
@@ -82,6 +87,9 @@ public class ChessWebSocketController {
             return;
         }
 
+        // Rời phòng cũ nếu có
+        leavePreviousRoom(email);
+
         GameState gameState = gameSessions.get(roomId);
         if (gameState == null) {
             System.out.println("Room not found: " + roomId);
@@ -100,6 +108,7 @@ public class ChessWebSocketController {
         System.out.println("Sending GameState after join: " + gameState);
         try {
             messagingTemplate.convertAndSend("/topic/game/" + roomId, gameState);
+            sendRoomUpdate(); // Cập nhật danh sách phòng
             System.out.println("GameState sent successfully to /topic/game/" + roomId);
         } catch (Exception e) {
             System.err.println("Error sending GameState: " + e.getMessage());
@@ -145,6 +154,26 @@ public class ChessWebSocketController {
         }
     }
 
+    @MessageMapping("/getAllRooms")
+    public void getAllRooms(SimpMessageHeaderAccessor headerAccessor) throws Exception {
+        System.out.println("Get all rooms request received");
+        String token = headerAccessor.getFirstNativeHeader("Authorization");
+        if (token == null || !token.startsWith("Bearer ")) {
+            System.out.println("Invalid token: No Bearer token provided");
+            return;
+        }
+        token = token.substring(7);
+        String email = JwtUtil.extractEmail(token);
+        System.out.println("Extracted email: " + email);
+        User user = userService.getUserByEmail(email);
+        if (user == null) {
+            System.out.println("User not found for email: " + email);
+            return;
+        }
+
+        sendRoomUpdate(); // Gửi danh sách phòng hiện tại
+    }
+
     @MessageMapping("/move/{roomId}")
     public void handleMove(@DestinationVariable String roomId, @Payload Move move,
                            SimpMessageHeaderAccessor headerAccessor) throws Exception {
@@ -172,13 +201,11 @@ public class ChessWebSocketController {
             return;
         }
 
-        // Kiểm tra lượt chơi
         if (!move.getPlayer().equals(gameState.getCurrentPlayer())) {
             System.out.println("Not player's turn: " + move.getPlayer() + ", current: " + gameState.getCurrentPlayer());
             return;
         }
 
-        // Chuyển đổi nước đi sang định dạng của chesslib
         Board board = gameState.getChessBoard();
         String fromSquare = convertToSquareNotation(move.getFromRow(), move.getFromCol());
         String toSquare = convertToSquareNotation(move.getToRow(), move.getToCol());
@@ -196,7 +223,6 @@ public class ChessWebSocketController {
             return;
         }
 
-        // Kiểm tra nước đi hợp lệ
         List<com.github.bhlangonijr.chesslib.move.Move> legalMoves = board.legalMoves();
         if (!legalMoves.contains(chessMove)) {
             System.out.println("Illegal move: " + moveStr + ". Legal moves: " + legalMoves);
@@ -210,7 +236,6 @@ public class ChessWebSocketController {
             return;
         }
 
-        // Xác định quân bị ăn (nếu có)
         Piece capturedPiece = board.getPiece(Square.valueOf(toSquare.toUpperCase()));
         if (capturedPiece != Piece.NONE) {
             move.setCaptured(capturedPiece.toString());
@@ -218,11 +243,8 @@ public class ChessWebSocketController {
             move.setCaptured(null);
         }
 
-        // Thực hiện nước đi
         board.doMove(chessMove);
         gameState.addMove(move);
-
-        // Cập nhật trạng thái trò chơi
         updateGameState(gameState);
 
         System.out.println("FEN after move: " + board.getFen());
@@ -265,14 +287,10 @@ public class ChessWebSocketController {
 
         Board board = gameState.getChessBoard();
         List<com.github.bhlangonijr.chesslib.move.Move> legalMoves = board.legalMoves();
-        List<String> legalDestinations = new java.util.ArrayList<>();
-
-        // Lọc các nước đi hợp lệ từ ô được chọn
-        for (com.github.bhlangonijr.chesslib.move.Move move : legalMoves) {
-            if (move.getFrom().toString().equalsIgnoreCase(square)) {
-                legalDestinations.add(move.getTo().toString().toLowerCase());
-            }
-        }
+        List<String> legalDestinations = legalMoves.stream()
+                .filter(move -> move.getFrom().toString().equalsIgnoreCase(square))
+                .map(move -> move.getTo().toString().toLowerCase())
+                .collect(Collectors.toList());
 
         System.out.println("Legal moves for square " + square + ": " + legalDestinations);
         try {
@@ -325,19 +343,15 @@ public class ChessWebSocketController {
     private void updateGameState(GameState gameState) {
         Board board = gameState.getChessBoard();
 
-        // Cập nhật lượt chơi
         gameState.setCurrentPlayer(gameState.getCurrentPlayer().equals("WHITE") ? "BLACK" : "WHITE");
 
-        // Cập nhật quyền nhập thành
         CastleRight whiteCastleRight = board.getCastleRight(Side.WHITE);
         gameState.setWhiteKingCastled(whiteCastleRight == CastleRight.NONE);
         CastleRight blackCastleRight = board.getCastleRight(Side.BLACK);
         gameState.setBlackKingCastled(blackCastleRight == CastleRight.NONE);
 
-        // Cập nhật en passant
         gameState.setEnPassantTarget(board.getEnPassantTarget() != Square.NONE ? convertSquareToPosition(board.getEnPassantTarget()) : null);
 
-        // Cập nhật bộ đếm nước đi từ FEN
         String fen = board.getFen();
         System.out.println("FEN in updateGameState: " + fen);
         String[] fenParts = fen.split(" ");
@@ -346,7 +360,6 @@ public class ChessWebSocketController {
             gameState.setFullMoveNumber(Integer.parseInt(fenParts[5]));
         }
 
-        // Kiểm tra trạng thái trò chơi
         System.out.println("isMated: " + board.isMated() + ", isStaleMate: " + board.isStaleMate() + ", isDraw: " + board.isDraw() + ", isKingAttacked: " + board.isKingAttacked());
         if (board.isMated()) {
             gameState.setStatus(gameState.getCurrentPlayer().equals("WHITE") ? "BLACK_WINS" : "WHITE_WINS");
@@ -372,5 +385,47 @@ public class ChessWebSocketController {
         int col = squareStr.charAt(0) - 'a';
         int row = 8 - (squareStr.charAt(1) - '0');
         return new int[]{row, col};
+    }
+
+    private void leavePreviousRoom(String email) {
+        for (Map.Entry<String, GameState> entry : gameSessions.entrySet()) {
+            GameState session = entry.getValue();
+            User whitePlayer = session.getWhitePlayer();
+            User blackPlayer = session.getBlackPlayer();
+            if (whitePlayer != null && whitePlayer.getEmail().equals(email)) {
+                session.setWhitePlayer(null);
+                System.out.println("User " + email + " left as White player from room: " + entry.getKey());
+            } else if (blackPlayer != null && blackPlayer.getEmail().equals(email)) {
+                session.setBlackPlayer(null);
+                System.out.println("User " + email + " left as Black player from room: " + entry.getKey());
+            }
+            // Xóa phòng nếu không còn người chơi
+            if (session.getWhitePlayer() == null && session.getBlackPlayer() == null) {
+                gameSessions.remove(entry.getKey());
+                System.out.println("Room " + entry.getKey() + " removed as it has no players");
+            }
+        }
+        sendRoomUpdate();
+    }
+
+    private void sendRoomUpdate() {
+        List<Map<String, Object>> roomDetails = gameSessions.entrySet().stream().map(entry -> {
+            Map<String, Object> roomInfo = new HashMap<>();
+            roomInfo.put("roomId", entry.getKey());
+            roomInfo.put("whitePlayer", entry.getValue().getWhitePlayer() != null ? entry.getValue().getWhitePlayer().getEmail() : null);
+            roomInfo.put("blackPlayer", entry.getValue().getBlackPlayer() != null ? entry.getValue().getBlackPlayer().getEmail() : null);
+            roomInfo.put("playerCount", (entry.getValue().getWhitePlayer() != null ? 1 : 0) + (entry.getValue().getBlackPlayer() != null ? 1 : 0));
+            roomInfo.put("status", entry.getValue().getStatus());
+            return roomInfo;
+        }).collect(Collectors.toList());
+
+        System.out.println("Sending updated rooms: " + roomDetails);
+        try {
+            messagingTemplate.convertAndSend("/topic/rooms", roomDetails);
+            System.out.println("Room list sent successfully to /topic/rooms");
+        } catch (Exception e) {
+            System.err.println("Error sending room list: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

@@ -140,14 +140,26 @@ public class AuthController {
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
         String token = request.get("token");
         String newPassword = request.get("newPassword");
+        String email = request.get("email"); // Nhận email từ frontend
 
         try {
-            String email = JwtUtil.extractEmail(token);
-            User user = userService.getUserByEmail(email);
-
-            if (user == null) {
-                return new ResponseEntity<>("Invalid token", HttpStatus.UNAUTHORIZED);
+            // Trích xuất email từ token
+            String tokenEmail = JwtUtil.extractEmail(token);
+            if (tokenEmail == null || !tokenEmail.equals(email)) {
+                return new ResponseEntity<>("Invalid token: Email does not match", HttpStatus.BAD_REQUEST);
             }
+
+            // Tìm user theo email
+            User user = userService.getUserByEmail(email);
+            if (user == null) {
+                return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+            }
+
+            // Kiểm tra token hợp lệ (nếu JwtUtil có validateToken)
+            // Nếu không có, bạn có thể bỏ qua bước này hoặc tự thêm logic kiểm tra thời hạn token
+            // if (!JwtUtil.validateToken(token)) {
+            //     return new ResponseEntity<>("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+            // }
 
             // Cập nhật mật khẩu mới
             user.setPassword(passwordEncoder.encode(newPassword));
@@ -155,7 +167,7 @@ public class AuthController {
 
             return new ResponseEntity<>("Password reset successfully", HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>("Invalid or expired token: " + e.getMessage(), HttpStatus.UNAUTHORIZED);
         }
     }
 }

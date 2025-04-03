@@ -18,11 +18,12 @@ function PlayWithBot() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showBotWinsModal, setShowBotWinsModal] = useState(false); // Thêm state cho modal khi bot thắng
   const [nextPath, setNextPath] = useState(null);
   const [boardWidth, setBoardWidth] = useState(550);
   const [selectedBot, setSelectedBot] = useState('stockfish');
   const [stockfishError, setStockfishError] = useState(null);
-  const [lastMove, setLastMove] = useState(null); // Thêm state mới
+  const [lastMove, setLastMove] = useState(null);
   const workerRef = useRef(null);
   const stockfishRef = useRef(null);
   const navigate = useNavigate();
@@ -226,9 +227,18 @@ function PlayWithBot() {
 
   const updateStatusAndHistory = (moveData) => {
     if (game.isGameOver()) {
-      if (game.isCheckmate()) setStatus(`Checkmate! ${game.turn() === "w" ? "Black" : "White"} wins`);
-      else if (game.isDraw()) setStatus("Draw!");
-    } else setStatus(`${game.turn() === "w" ? "White" : "Black"} to move`);
+      if (game.isCheckmate()) {
+        const winner = game.turn() === "w" ? "Black" : "White";
+        setStatus(`Checkmate! ${winner} wins`);
+        if (winner === "Black") {
+          setShowBotWinsModal(true); // Hiển thị modal khi bot (đen) thắng
+        }
+      } else if (game.isDraw()) {
+        setStatus("Draw!");
+      }
+    } else {
+      setStatus(`${game.turn() === "w" ? "White" : "Black"} to move`);
+    }
     if (moveData) {
       const moveNotation = `${moveData.san}`;
       const player = moveData.color === 'w' ? 'Player' : 'Bot';
@@ -249,7 +259,7 @@ function PlayWithBot() {
     setShowPromotionOptions(false);
     setPromotionMove(null);
     setMoveHistory([]);
-    setLastMove(null); // Reset lastMove
+    setLastMove(null);
     setShowResetModal(false);
     if (selectedBot === 'stockfish' && stockfishRef.current) {
       stockfishRef.current.postMessage('ucinewgame');
@@ -293,8 +303,10 @@ function PlayWithBot() {
     }
   };
 
+  const closeBotWinsModal = () => {
+    setShowBotWinsModal(false);
+  };
 
-  
   return (
     <div className="relative overflow-x-hidden min-h-screen font-sans bg-gradient-to-br from-gray-900 via-rose-950 to-black">
       {/* Navbar */}
@@ -395,8 +407,7 @@ function PlayWithBot() {
 
           <div className="w-full lg:w-1/3 flex flex-col gap-4">
             <div
-              style={{ height: boardWidth / 1.3  }}
-              
+              style={{ height: boardWidth / 1.3 }}
               className="bg-rose-900/80 rounded-2xl shadow-[0_0_15px_rgba(251,113,133,0.5)] border border-rose-500/50 p-4 transition-all duration-300 hover:shadow-[0_0_20px_rgba(251,113,133,0.7)]"
             >
               {/* Select Bot và Bot Level */}
@@ -471,6 +482,43 @@ function PlayWithBot() {
         </div>
       </div>
 
+      {/* Modal khi bot thắng */}
+      {showBotWinsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-rose-900/80 border border-rose-500/50 rounded-2xl shadow-[0_0_20px_rgba(251,113,133,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={closeBotWinsModal}
+                className="text-rose-200 hover:text-rose-100 transition-colors duration-300"
+              >
+                ×
+              </button>
+            </div>
+            <h2 className="text-2xl font-bold text-rose-300 mb-4 drop-shadow-[0_0_8px_rgba(251,113,133,0.5)]">
+              Bot Wins!
+            </h2>
+            <p className="text-rose-200 mb-6  text-center">
+              Bot: I knew you couldn’t beat me!
+            </p>
+            <div className="flex justify-center mb-6">
+              <img
+                src="https://images.chesscomfiles.com/uploads/v1/images_users/tiny_mce/18DogKnight/phpXLOHUb.jpg" // Thay bằng link ảnh meme của bạn
+                alt="Bot Wins Meme"
+                className="max-w-full h-auto rounded-lg shadow-[0_0_15px_rgba(251,113,133,0.5)]"
+                style={{ maxHeight: '200px' }}
+              />
+            </div>
+            <button
+              onClick={closeBotWinsModal}
+              className="bg-gradient-to-r from-rose-600 to-rose-500 text-white py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(251,113,133,0.7)] hover:from-rose-700 hover:to-rose-600 hover:scale-105 hover:shadow-[0_0_25px_rgba(251,113,133,0.9)] transition-all duration-300"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Promotion */}
       {showPromotionOptions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-rose-900/80 border border-rose-500/50 rounded-2xl shadow-[0_0_20px_rgba(251,113,133,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
@@ -492,6 +540,7 @@ function PlayWithBot() {
         </div>
       )}
 
+      {/* Modal Reset */}
       {showResetModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-rose-900/80 border border-rose-500/50 rounded-2xl shadow-[0_0_20px_rgba(251,113,133,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
@@ -519,6 +568,7 @@ function PlayWithBot() {
         </div>
       )}
 
+      {/* Modal Exit */}
       {showExitModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-rose-900/80 border border-rose-500/50 rounded-2xl shadow-[0_0_20px_rgba(251,113,133,0.6)] p-6 max-w-md w-full backdrop-blur-lg">

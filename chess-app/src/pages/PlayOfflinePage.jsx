@@ -17,6 +17,8 @@ function PlayOfflinePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showGameOverModal, setShowGameOverModal] = useState(false); // Thêm state cho modal khi trò chơi kết thúc
+  const [winner, setWinner] = useState(null); // Thêm state để lưu người thắng
   const [nextPath, setNextPath] = useState(null);
   const [boardWidth, setBoardWidth] = useState(550);
   const [lastMove, setLastMove] = useState(null);
@@ -80,7 +82,10 @@ function PlayOfflinePage() {
   const updateStatusAndHistory = (moveData = null) => {
     if (game.isGameOver()) {
       if (game.isCheckmate()) {
-        setStatus(`Checkmate! ${game.turn() === "w" ? "Black wins" : "White wins"}`);
+        const winner = game.turn() === "w" ? "Black" : "White";
+        setStatus(`Checkmate! ${winner} wins`);
+        setWinner(winner); // Lưu người thắng
+        setShowGameOverModal(true); // Hiển thị modal khi có người thắng
       } else if (game.isDraw()) {
         setStatus("Draw!");
       }
@@ -96,19 +101,19 @@ function PlayOfflinePage() {
 
   const onSquareClick = (square) => {
     if (showPromotionOptions) return;
-  
+
     if (selectedSquare) {
       const move = { from: selectedSquare, to: square };
       const possibleMoves = game.moves({ square: selectedSquare, verbose: true });
       const foundMove = possibleMoves.find(m => m.to === square);
-  
+
       if (foundMove && foundMove.promotion) {
         setPromotionMove(move);
         setShowPromotionOptions(true);
       } else if (foundMove) {
         game.move(move);
         setGamePosition(game.fen());
-        setLastMove({ from: selectedSquare, to: square }); // Cập nhật nước đi cuối
+        setLastMove({ from: selectedSquare, to: square });
         updateStatusAndHistory(foundMove);
       }
       setSelectedSquare(null);
@@ -134,7 +139,7 @@ function PlayOfflinePage() {
     }
     game.move({ from: sourceSquare, to: targetSquare });
     setGamePosition(game.fen());
-    setLastMove({ from: sourceSquare, to: targetSquare }); // Cập nhật nước đi cuối
+    setLastMove({ from: sourceSquare, to: targetSquare });
     updateStatusAndHistory(move);
     return true;
   };
@@ -142,7 +147,7 @@ function PlayOfflinePage() {
   const promotePawn = (piece) => {
     if (!promotionMove) return;
     game.move({ from: promotionMove.from, to: promotionMove.to, promotion: piece });
-    setLastMove({ from: promotionMove.from, to: promotionMove.to }); // Cập nhật nước đi cuối
+    setLastMove({ from: promotionMove.from, to: promotionMove.to });
     setShowPromotionOptions(false);
     setPromotionMove(null);
     setGamePosition(game.fen());
@@ -163,6 +168,9 @@ function PlayOfflinePage() {
     setStatus("White to move");
     setMoveHistory([]);
     setShowResetModal(false);
+    setShowGameOverModal(false); // Đóng modal khi reset
+    setWinner(null); // Reset người thắng
+    setLastMove(null); // Reset nước đi cuối
   };
 
   const handleLogout = () => {
@@ -182,8 +190,8 @@ function PlayOfflinePage() {
     validMoves.forEach(square => styles[square] = { backgroundColor: "rgba(0, 255, 0, 0.4)" });
     if (selectedSquare) styles[selectedSquare] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
     if (lastMove) {
-      styles[lastMove.from] = { backgroundColor: "rgba(0, 255, 0, 0.6)" }; // Bôi xanh vị trí trước đó
-      styles[lastMove.to] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };   // Bôi xanh vị trí hiện tại
+      styles[lastMove.from] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
+      styles[lastMove.to] = { backgroundColor: "rgba(0, 255, 0, 0.6)" };
     }
     return styles;
   };
@@ -192,6 +200,10 @@ function PlayOfflinePage() {
     if (nextPath) navigate(nextPath);
     setShowExitModal(false);
     setNextPath(null);
+  };
+
+  const closeGameOverModal = () => {
+    setShowGameOverModal(false);
   };
 
   return (
@@ -324,6 +336,42 @@ function PlayOfflinePage() {
           </div>
         </div>
       </div>
+
+      {/* Modal khi trò chơi kết thúc */}
+      {showGameOverModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-teal-950/80 border border-emerald-500/50 rounded-2xl shadow-[0_0_20px_rgba(20,83,45,0.6)] p-6 max-w-md w-full backdrop-blur-lg">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={closeGameOverModal}
+                className="text-emerald-200 hover:text-emerald-100 transition-colors duration-300"
+              >
+                ×
+              </button>
+            </div>
+            <h2 className="text-2xl font-bold text-emerald-300 mb-4 drop-shadow-[0_0_8px_rgba(20,83,45,0.5)]">
+              Game Over!
+            </h2>
+            <p className="text-emerald-200 mb-6 mr-20 text-center">
+              {winner} wins!
+            </p>
+            <div className="flex justify-center mb-6">
+              <img
+                src="https://s.hdnux.com/photos/01/16/07/61/20479087/16/ratio3x2_1920.jpg" // Thay bằng link ảnh meme của bạn
+                alt="Game Over Meme"
+                className="max-w-full h-auto rounded-lg shadow-[0_0_15px_rgba(20,83,45,0.5)]"
+                style={{ maxHeight: '200px' }}
+              />
+            </div>
+            <button
+              onClick={closeGameOverModal}
+              className="bg-emerald-600 text-white py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(20,83,45,0.7)] hover:bg-emerald-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(20,83,45,0.9)] transition-all duration-300"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Promotion Options Modal */}
       {showPromotionOptions && (

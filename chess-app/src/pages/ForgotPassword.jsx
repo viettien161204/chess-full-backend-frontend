@@ -28,17 +28,17 @@ const ForgotPassword = () => {
       console.log("Extracted resetToken:", resetToken);
 
       const templateParams = {
-        to_email: email, // Thêm email người nhận
-        reset_token: resetToken, // Token reset
+        to_email: email,
+        reset_token: resetToken,
       };
       console.log("Template params for EmailJS:", templateParams);
 
       console.log("Sending email via EmailJS...");
       const emailResponse = await emailjs.send(
-        'service_ihf3frn', // Service ID của bạn
-        'template_ivm36at', // Template ID của bạn
+        'service_ihf3frn',
+        'template_ivm36at',
         templateParams,
-        'Hx2BmK6TieVr20TG8' // Public Key của bạn
+        'Hx2BmK6TieVr20TG8'
       );
       console.log("EmailJS response:", emailResponse.status, emailResponse.text);
 
@@ -63,11 +63,12 @@ const ForgotPassword = () => {
     e.preventDefault();
     setError("");
     setMessage("");
-    console.log("Step 2: Starting reset password process with token:", token, "and newPassword:", newPassword);
+    console.log("Step 2: Starting reset password process with email:", email, "token:", token, "and newPassword:", newPassword);
 
     try {
-      console.log("Sending POST request to /api/auth/reset-password with data:", { token, newPassword });
+      console.log("Sending POST request to /api/auth/reset-password with data:", { email, token, newPassword });
       const response = await axios.post('https://api.chessvn.io.vn/api/auth/reset-password', {
+        email, // Gửi email cùng với token
         token,
         newPassword,
       }, {

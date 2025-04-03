@@ -32,6 +32,9 @@ const PlayOnlinePage = () => {
   const [chess, setChess] = useState(new Chess());
   const [activeTab, setActiveTab] = useState("moveHistory");
   const [lastMove, setLastMove] = useState(null);
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [hasNewMessage, setHasNewMessage] = useState(false); // Thêm state cho tin nhắn mới
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,6 +76,18 @@ const PlayOnlinePage = () => {
     client.onConnect = () => {
       console.log("Connected to WebSocket");
       setStompClient(client);
+
+      client.subscribe("/topic/rooms", (message) => {
+        const rooms = JSON.parse(message.body);
+        console.log("Received available rooms from /topic/rooms:", rooms);
+        setAvailableRooms(rooms);
+      });
+
+      client.publish({
+        destination: "/app/getAllRooms",
+        body: "{}",
+        headers: { Authorization: `Bearer ${token}` },
+      });
     };
 
     client.onStompError = (frame) => {
@@ -215,21 +230,29 @@ const PlayOnlinePage = () => {
       setLastMove(null);
     }
 
-    setMessages(
-      newGameState.chatMessages
-        ? newGameState.chatMessages.map((msg) => {
-            const senderPlayer =
-              msg.senderId === newGameState.whitePlayer?.id ? newGameState.whitePlayer : newGameState.blackPlayer;
-            const senderName = senderPlayer
-              ? `${senderPlayer.firstName || "Player"} ${senderPlayer.lastName || (senderPlayer === newGameState.whitePlayer ? "1" : "2")}`
-              : "Unknown";
-            return {
-              sender: senderName,
-              text: msg.text,
-            };
-          })
-        : []
-    );
+    const newMessages = newGameState.chatMessages
+      ? newGameState.chatMessages.map((msg) => {
+          const senderPlayer =
+            msg.senderId === newGameState.whitePlayer?.id ? newGameState.whitePlayer : newGameState.blackPlayer;
+          const senderName = senderPlayer
+            ? `${senderPlayer.firstName || "Player"} ${senderPlayer.lastName || (senderPlayer === newGameState.whitePlayer ? "1" : "2")}`
+            : "Unknown";
+          return {
+            sender: senderName,
+            text: msg.text,
+          };
+        })
+      : [];
+    
+    // Kiểm tra tin nhắn mới từ người chơi khác
+    if (newMessages.length > messages.length && activeTab !== "chat") {
+      const latestMessage = newMessages[newMessages.length - 1];
+      const myId = newGameState.whitePlayer?.email === email ? newGameState.whitePlayer?.id : newGameState.blackPlayer?.id;
+      if (latestMessage.sender !== "Unknown" && newGameState.chatMessages[newGameState.chatMessages.length - 1].senderId !== myId) {
+        setHasNewMessage(true);
+      }
+    }
+    setMessages(newMessages);
   };
 
   const parseJwt = (token) => {
@@ -277,17 +300,31 @@ const PlayOnlinePage = () => {
     setRoomId(newRoomId);
 
     const token = localStorage.getItem("token");
+    if (roomId) {
+      setAvailableRooms((prevRooms) =>
+        prevRooms.map((room) =>
+          room.roomId === roomId ? { ...room, playerCount: 0 } : room
+        )
+      );
+    }
+
     stompClient.publish({
       destination: `/app/create/${newRoomId}`,
       body: "{}",
       headers: { Authorization: `Bearer ${token}` },
     });
+
+    setAvailableRooms((prevRooms) => [
+      ...prevRooms,
+      { roomId: newRoomId, playerCount: 1 }
+    ]);
+
     alert(`Room created with ID: ${newRoomId}`);
   };
 
-  const joinRoom = () => {
-    if (!roomId.trim()) {
-      alert("Please enter a room ID");
+  const joinRoom = (roomIdToJoin = roomId) => {
+    if (!roomIdToJoin.trim()) {
+      alert("Please enter or select a room ID");
       return;
     }
     if (!stompClient || !stompClient.connected) {
@@ -296,12 +333,21 @@ const PlayOnlinePage = () => {
     }
 
     const token = localStorage.getItem("token");
+    if (roomId && roomId !== roomIdToJoin) {
+      setAvailableRooms((prevRooms) =>
+        prevRooms.map((room) =>
+          room.roomId === roomId ? { ...room, playerCount: 0 } : room
+        )
+      );
+    }
+
+    setRoomId(roomIdToJoin);
     stompClient.publish({
-      destination: `/app/join/${roomId}`,
+      destination: `/app/join/${roomIdToJoin}`,
       body: "{}",
       headers: { Authorization: `Bearer ${token}` },
     });
-    alert(`Joining room with ID: ${roomId}`);
+    alert(`Joining room with ID: ${roomIdToJoin}`);
   };
 
   const resetGame = () => {
@@ -333,7 +379,15 @@ const PlayOnlinePage = () => {
   };
 
   const leaveRoom = () => {
+    if (roomId) {
+      setAvailableRooms((prevRooms) =>
+        prevRooms.map((room) =>
+          room.roomId === roomId ? { ...room, playerCount: 0 } : room
+        )
+      );
+    }
     setLastMove(null);
+    setRoomId("");
     window.location.reload();
   };
 
@@ -597,12 +651,18 @@ const PlayOnlinePage = () => {
                   Move History
                 </button>
                 <button
-                  onClick={() => setActiveTab("chat")}
-                  className={`flex-1 py-2 text-center text-fuchsia-200 font-semibold ${
+                  onClick={() => {
+                    setActiveTab("chat");
+                    setHasNewMessage(false); // Reset dấu chấm đỏ khi vào tab Chat
+                  }}
+                  className={`flex-1 py-2 text-center text-fuchsia-200 font-semibold relative ${
                     activeTab === "chat" ? "border-b-2 border-fuchsia-300 text-fuchsia-300" : ""
                   }`}
                 >
                   Chat
+                  {hasNewMessage && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                  )}
                 </button>
                 <button
                   onClick={() => setActiveTab("joinCreateRoom")}
@@ -689,7 +749,7 @@ const PlayOnlinePage = () => {
               )}
 
               {activeTab === "joinCreateRoom" && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <input
                     type="text"
                     value={roomId}
@@ -699,7 +759,7 @@ const PlayOnlinePage = () => {
                   />
                   <div className="flex gap-2">
                     <button
-                      onClick={joinRoom}
+                      onClick={() => joinRoom()}
                       className="w-1/2 px-3 py-1 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_15px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 hover:shadow-[0_0_25px_rgba(217,70,239,1)] transition-all duration-300"
                     >
                       Join Room
@@ -711,12 +771,104 @@ const PlayOnlinePage = () => {
                       Create Room
                     </button>
                   </div>
+                  <div className="mt-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-fuchsia-200 font-semibold">Rooms:</h3>
+                      <button
+                        onClick={() => setShowRoomModal(true)}
+                        className="px-3 py-1 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_10px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 transition-all duration-300"
+                      >
+                        Show Rooms
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {showRoomModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-fuchsia-900/80 border border-fuchsia-500/50 rounded-2xl shadow-[0_0_20px_rgba(217,70,239,0.6)] p-6 w-full max-w-4xl backdrop-blur-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-fuchsia-300 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]">
+                Available Rooms
+              </h2>
+              <button
+                onClick={() => setShowRoomModal(false)}
+                className="px-3 py-1 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_10px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 transition-all duration-300"
+              >
+                Close
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto">
+              {availableRooms.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_0.5fr] gap-4">
+                  {/* Tiêu đề cột */}
+                  <div className="font-semibold text-fuchsia-200 bg-fuchsia-800/70 p-2 rounded-lg">Room ID</div>
+                  <div className="font-semibold text-fuchsia-200 bg-fuchsia-800/70 p-2 rounded-lg">Players</div>
+                  <div className="font-semibold text-fuchsia-200 bg-fuchsia-800/70 p-2 rounded-lg">Action</div>
+                  {/* Dữ liệu phòng */}
+                  {availableRooms.map((room, index) => (
+                    <React.Fragment key={index}>
+                      <div className="p-4 bg-fuchsia-800/70 rounded-lg border border-fuchsia-500/40 text-fuchsia-100 hover:bg-fuchsia-700/70 transition-all duration-300">
+                        <p className="font-semibold text-lg">{room.roomId}</p>
+                      </div>
+                      <div className="p-4 bg-fuchsia-800/70 rounded-lg border border-fuchsia-500/40 text-fuchsia-100 hover:bg-fuchsia-700/70 transition-all duration-300">
+                        <p className="text-sm">
+                          Players: {room.playerCount}/2
+                          {room.whitePlayer && ` - White: ${room.whitePlayer}`}
+                          {room.blackPlayer && ` - Black: ${room.blackPlayer}`}
+                        </p>
+                      </div>
+                      <div className="p-2 bg-fuchsia-800/70 rounded-lg border border-fuchsia-500/40 text-fuchsia-100 hover:bg-fuchsia-700/70 transition-all duration-300 flex items-center justify-center">
+                        {room.playerCount < 2 ? (
+                          <button
+                            onClick={() => {
+                              joinRoom(room.roomId);
+                              setShowRoomModal(false);
+                            }}
+                            className="px-2 py-1 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_10px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 transition-all duration-300 text-sm"
+                          >
+                            Join
+                          </button>
+                        ) : (
+                          <span className="text-fuchsia-400 text-sm">Full</span>
+                        )}
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-fuchsia-400 text-center">No rooms available</p>
+              )}
+            </div>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => {
+                  if (stompClient && stompClient.connected) {
+                    const token = localStorage.getItem("token");
+                    console.log("Sending /app/getAllRooms request");
+                    stompClient.publish({
+                      destination: "/app/getAllRooms",
+                      body: "{}",
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                  } else {
+                    console.log("Cannot refresh: WebSocket not connected");
+                    alert("Not connected to the game server. Please try again.");
+                  }
+                }}
+                className="px-3 py-1 bg-fuchsia-600 text-white rounded-lg shadow-[0_0_10px_rgba(217,70,239,0.7)] hover:bg-fuchsia-700 hover:scale-105 transition-all duration-300"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showPromotionOptions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
