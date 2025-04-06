@@ -1,0 +1,9 @@
+{
+    "env": {
+      "browser": true,
+      "worker": true // Thêm môi trường worker
+    },
+    "rules": {
+      "no-restricted-globals": ["error", { "name": "self", "message": "Use self only in Web Worker context" }]
+    }
+  }
